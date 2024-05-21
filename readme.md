@@ -13,7 +13,7 @@ The tunnel.sh script sets up and manages the Feri Tunnel, a hypothetical tunneli
 
 ## Usage
 
-## Running the Script
+### Running the Script
 
 To run the script, use the following command:
 

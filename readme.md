@@ -5,15 +5,11 @@ The tunnel.sh script sets up and manages the Feri Tunnel, a hypothetical tunneli
 
 ## Requirements
 
-Bash
-
-SQLite3
-
-OpenSSL
-
-Systemd
-
-Root privileges
+- Bash
+- SQLite3
+- OpenSSL
+- Systemd
+- Root privileges
 
 ## Usage
 

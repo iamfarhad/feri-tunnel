@@ -15,9 +15,6 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-source optimization/tcp.sh
-source optimization/requirement.sh
-
 # Function to handle Ctrl+C (SIGINT)
 handle_exit() {
     echo -e "\n${YELLOW}Ctrl+C detected. Do you really want to exit? (y/n)${NC}"

@@ -646,7 +646,6 @@ generate_ipv6() {
     fi
 
     local local_ipv6="${base}${last_index}/64"
-    echo "Debug: Assigning IPv6 ${local_ipv6}"
     echo "$local_ipv6"
 
     # Update the database with the new last assigned index

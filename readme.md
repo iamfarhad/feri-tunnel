@@ -23,19 +23,14 @@ This script sets up and manages the Feri Tunnel, a hypothetical tunneling tool d
 
 1. Clone the repository:
     ```bash
-    git clone <repository-url>
-    cd <repository-directory>
+    git clone git@github.com:iamfarhad/feri-tunnel.git
+    
+    cd feri-tunnel
     ```
 
-2. Make the script executable:
+2. Run the script:
     ```bash
-wget "https://raw.githubusercontent.com/iamfarhad/feri-tunnel/main/tunnel.sh" -O tunnel.sh && chmod +x tunnel.sh && bash tunnel.sh 
-
-    ```
-
-3. Run the script:
-    ```bash
-    sudo ./tunnel.sh
+    wget "https://raw.githubusercontent.com/iamfarhad/feri-tunnel/main/tunnel.sh" -O tunnel.sh && chmod +x tunnel.sh && bash tunnel.sh 
     ```
 
 ## Script Details

@@ -1,3 +1,4 @@
 tunnel_*.sh
 tunnels.db
+ip_state.db
 .idea/

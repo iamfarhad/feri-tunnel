@@ -374,8 +374,13 @@ create_tunnel() {
         return
     fi
 
-    # Generate a random local IPv6 address in the fc00::/7 range
-    local_ipv6=$(openssl rand -hex 8 | sed 's/\(..\)/\1:/g; s/.$//' | awk -F: '{print "fc00:" $1 $2 ":" $3 $4 "::1/64"}')
+        # Generate and check IPv6 address
+        local_ipv6=$(generate_ipv6 "$tunnel_type")
+        # shellcheck disable=SC2181
+        if [[ $? -ne 0 ]]; then
+            echo -e "${RED}$local_ipv6${NC}"  # Display error message if IPv6 generation fails
+            return
+        fi
 
     # Create the script file name
     script_file="$script_dir/tunnel_${interface_name}_$(openssl rand -hex 4).sh"
@@ -598,7 +603,60 @@ update_script_file() {
     echo -e "${GREEN}Script file updated successfully.${NC}"
 }
 
-# Function to optimize TCP settings for performance
+initialize_database() {
+    local db_path="ip_state.db"  # Adjust the path as needed
+
+    # Ensure the SQLite database and table are ready
+    sqlite3 $db_path <<EOF
+CREATE TABLE IF NOT EXISTS ip_state (
+    server_type TEXT PRIMARY KEY,
+    last_assigned_index INTEGER
+);
+EOF
+}
+initialize_database
+# Function to generate a unique local IPv6 address within a specific range for 'IR' or 'KHAREJ'
+generate_ipv6() {
+    local server_type=$1
+    local base="fc00:ec97:6a4a::"
+    local start=1
+    local end=1
+    local db_path="ip_state.db"  # Adjust the path as needed
+
+    if [ "$server_type" == "IR" ]; then
+        start=1
+        end=99
+    elif [ "$server_type" == "KHAREJ" ]; then
+        start=100
+        end=200
+    else
+        echo "Error: Invalid server type specified." >&2
+        return 1
+    fi
+
+    # Initialize or update the SQLite database for tracking the last IP index
+    local last_index=$(sqlite3 $db_path "SELECT last_assigned_index FROM ip_state WHERE server_type = '$server_type';")
+
+    if [ -z "$last_index" ] || [ "$last_index" -lt "$start" ] || [ "$last_index" -ge "$end" ]; then
+        last_index=$start
+    else
+        last_index=$((last_index + 1))
+    fi
+
+    if [ "$last_index" -gt "$end" ]; then
+        echo "Error: No available IPv6 addresses in the range from $start to $end." >&2
+        return 1
+    fi
+
+    local local_ipv6="${base}${last_index}/64"
+    echo "Debug: Assigning IPv6 ${local_ipv6}"
+    echo "$local_ipv6"
+
+    # Update the database with the new last assigned index
+    sqlite3 $db_path "INSERT OR REPLACE INTO ip_state (server_type, last_assigned_index) VALUES ('$server_type', '$last_index');"
+
+    return 0
+}
 
 
 

@@ -23,6 +23,7 @@ handle_exit() {
         echo -e "${RED}Exiting...${NC}"
         exit 0
     fi
+    main
 }
 
 # Trap Ctrl+C (SIGINT)
@@ -632,6 +633,7 @@ generate_ipv6() {
     fi
 
     # Initialize or update the SQLite database for tracking the last IP index
+    # shellcheck disable=SC2155
     local last_index=$(sqlite3 $db_path "SELECT last_assigned_index FROM ip_state WHERE server_type = '$server_type';")
 
     if [ -z "$last_index" ] || [ "$last_index" -lt "$start" ] || [ "$last_index" -ge "$end" ]; then
@@ -654,8 +656,41 @@ generate_ipv6() {
     return 0
 }
 
+increase_user_limits() {
+    echo "Increasing user limits..."
+
+    # Apply ulimit settings
+    ulimit -c unlimited  # Core file size
+    ulimit -d unlimited  # Data segment size
+    ulimit -f unlimited  # File size
+    ulimit -i unlimited  # Pending signals
+    ulimit -l unlimited  # Memory lock size
+    ulimit -m unlimited  # Memory size
+    ulimit -n 1048576    # Number of open file descriptors
+    ulimit -q unlimited  # POSIX message queue size
+    ulimit -s 32768      # Stack size (soft limit)
+    ulimit -s -H 65536   # Stack size (hard limit)
+    ulimit -t unlimited  # CPU time
+    ulimit -u unlimited  # Number of processes
+    ulimit -v unlimited  # Virtual memory
+    ulimit -x unlimited  # File locks
+
+    echo "User limits have been increased."
+
+    # Ask user if they want to reboot
+    read -p "Reboot the system now? (y/n): " confirm_reboot
+    if [[ $confirm_reboot =~ ^[Yy]$ ]]; then
+        echo "Rebooting now..."
+        sudo reboot
+    else
+        echo "Reboot canceled. Changes will take full effect after the next reboot."
+        mai4
+    fi
+}
 
 
+
+main() {
 # Main menu
 while true; do
     echo ""
@@ -666,7 +701,8 @@ while true; do
     echo -e "${YELLOW}4. Edit a tunnel${NC}"
     echo -e "${YELLOW}5. Delete a tunnel${NC}"
     echo -e "${YELLOW}6. Optimize network${NC}"
-    echo -e "${YELLOW}7. Exit${NC}"
+    echo -e "${YELLOW}7. System limit${NC}"
+    echo -e "${YELLOW}8. Exit${NC}"
 
     read -p "Enter your choice: " choice
     case $choice in
@@ -689,6 +725,9 @@ while true; do
             optimize_network
             ;;
         7)
+            increase_user_limits
+            ;;
+        8)
             echo -e "${RED}Exiting...${NC}"
             exit 0
             ;;
@@ -697,3 +736,6 @@ while true; do
             ;;
     esac
 done
+}
+
+main

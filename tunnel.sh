@@ -615,7 +615,7 @@ initialize_database
 # Function to generate a unique local IPv6 address within a specific range for 'IR' or 'KHAREJ'
 generate_ipv6() {
     local server_type=$1
-    local base="fc00:ec97:6a4a::"
+    local base="23e7:dc8:9a6::"
     local start=1
     local end=1
     local db_path="ip_state.db"  # Adjust the path as needed

@@ -1,76 +1,94 @@
-# Feri Tunnel Script
 
-Overview
-Based on the shell script you've shared, here's a full Markdown documentation that explains how to use and understand the functionalities within tunnel.sh. This script is designed to manage secure network tunnels, optimize network settings, and handle system services related to these tunnels on Ubuntu or Debian-based systems.
+# Tunnel.sh - Feri Tunnel Management Script
 
-## Requirements
+## Description
 
-- Bash
-- SQLite3
-- OpenSSL
-- Systemd
-- Root privileges
+This script sets up and manages the Feri Tunnel, a hypothetical tunneling tool designed for secure and efficient data transfer across networks.
+
+## Features
+
+- Supports Ubuntu and Debian-based systems.
+- Optimizes TCP settings for better performance.
+- Enables BBR (Bottleneck Bandwidth and Round-trip propagation time).
+- Creates, lists, edits, and deletes tunnels.
+- Uses SQLite for storing tunnel configurations.
+
+## Prerequisites
+
+- Ubuntu or Debian-based system.
+- `sudo` privileges.
+- `lsb_release`, `sqlite3`, and `openssl` installed.
 
 ## Usage
 
-### Running the Script
+1. Clone the repository:
+    ```bash
+    git clone <repository-url>
+    cd <repository-directory>
+    ```
 
-To run the script, use the following command:
-
-```bash
+2. Make the script executable:
+    ```bash
 wget "https://raw.githubusercontent.com/iamfarhad/feri-tunnel/main/tunnel.sh" -O tunnel.sh && chmod +x tunnel.sh && bash tunnel.sh 
-```
 
+    ```
 
-## Features
-1. Root and OS Check: Ensures the script is running with root privileges and on a supported Ubuntu or Debian-based system.
-2. Dependency Installation: Updates the system and installs necessary packages like sqlite3 and openssl.
-3. Network Optimization: Applies performance enhancements to TCP settings and enables BBR (Bottleneck Bandwidth and Round-trip propagation time) congestion control.
-4. #### Tunnel Management:
-- Create Tunnels: Supports creation of IR (Iran to Kharej) and KHAREJ (Kharej to Iran) tunnels.
-- List Tunnels: Displays all configured tunnels from a SQLite database.
-- Edit Tunnels: Allows modification of existing tunnel configurations.
-- Delete Tunnels: Removes specified tunnels from the system and the database.
+3. Run the script:
+    ```bash
+    sudo ./tunnel.sh
+    ```
 
-# Functions Description
-### check_root
-  Verifies that the script is run as root, exiting if not.
+## Script Details
 
-### check_os
-  Checks if the operating system is Ubuntu or Debian-based using lsb_release, exits if not.
+### Functions
 
-### install_dependencies
-  Installs and updates necessary packages like sqlite3 and openssl.
+- **handle_exit:** Handles Ctrl+C interruption.
+- **check_root:** Checks if the script is run as root.
+- **check_os:** Checks if the OS is Ubuntu or Debian-based.
+- **optimize_tcp:** Optimizes TCP settings.
+- **enable_bbr:** Enables BBR for congestion control.
+- **install_dependencies:** Updates the system and installs necessary dependencies.
+- **create_table:** Creates a SQLite table for tunnels.
+- **create_ir_tunnel:** Creates a tunnel with local IPv4 in Iran.
+- **create_kharej_tunnel:** Creates a tunnel with local IPv4 outside Iran.
+- **create_tunnel:** General function to create a tunnel.
+- **generate_systemd_service:** Generates a systemd service for the tunnel.
+- **enable_and_start_service:** Enables and starts the systemd service.
+- **validate_ipv4:** Validates an IPv4 address.
+- **insert_tunnel_info:** Inserts tunnel information into the SQLite database.
+- **show_all_tunnels:** Displays all tunnels stored in the SQLite database.
+- **delete_tunnel:** Deletes a tunnel based on ID.
+- **edit_tunnel:** Edits an existing tunnel.
+- **update_script_file:** Updates the script file with new IP addresses.
+- **optimize_network:** Optimizes network settings.
 
-### optimize_tcp
-  Backs up current TCP settings, then applies optimized settings for better performance.
+### Main Menu Options
 
-### enable_bbr
-  Enables BBR for improved network congestion control.
+1. **Create IR Tunnel:** Sets up a tunnel with a local IPv4 address in Iran.
+2. **Create KHAREJ Tunnel:** Sets up a tunnel with a local IPv4 address outside Iran.
+3. **Show all tunnels:** Lists all configured tunnels.
+4. **Edit a tunnel:** Allows editing of an existing tunnel.
+5. **Delete a tunnel:** Deletes a specified tunnel.
+6. **Optimize network:** Applies TCP and network optimizations.
+7. **Exit:** Exits the script.
 
-### create_ir_tunnel and create_kharej_tunnel
-  Prompts user for necessary details and calls create_tunnel to set up an IR or KHAREJ tunnel.
+## Example
 
-### create_tunnel
-  Validates IP addresses, generates a local IPv6 address, creates necessary script and service files, and inserts tunnel info into the SQLite database.
+### Creating an IR Tunnel
 
-### generate_systemd_service
-  Creates a systemd service file for the tunnel and configures it to start on boot.
+1. Choose "1. Create IR Tunnel" from the menu.
+2. Enter the interface name.
+3. Enter the local IPv4 address (Iran).
+4. Enter the remote IPv4 address (outside Iran).
+5. The script will generate the necessary tunnel creation commands and save them to a script file. It will also create a systemd service to manage the tunnel.
 
-### validate_ipv4
-  Validates the format of IPv4 addresses.
+## Troubleshooting
 
-### insert_tunnel_info
-  Inserts tunnel details into a SQLite database for record-keeping.
+- Ensure you have `sudo` privileges.
+- Ensure the required dependencies (`lsb_release`, `sqlite3`, `openssl`) are installed.
+- Check if the OS is Ubuntu or Debian-based.
+- For any issues with network optimizations, refer to the script for specific sysctl configurations.
 
-### show_all_tunnels
-  Lists all tunnels configured in the SQLite database.
+## License
 
-### delete_tunnel
-  Deletes specified tunnel by stopping the service, removing configuration files, and deleting database records.
-
-### edit_tunnel
-  Allows modification of existing tunnel settings.
-
-### update_script_file
-  Updates the tunnel script file with new IP addresses when a tunnel is edited.
+This project is licensed under the MIT License. See the LICENSE file for more details.

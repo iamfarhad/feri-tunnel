@@ -51,7 +51,7 @@ The Feri Tunnel script is ideal for system administrators and users who need to 
 - **Verify Connection**:
   Ping the generated local IPv6 address:
   ```bash
-  ping6 -c 4 fc00:ec97:6a4a::1
+  ping6 <Generated Local IPV6>
   ```
 
 ## For Developers

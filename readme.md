@@ -35,8 +35,6 @@ The Feri Tunnel script is ideal for system administrators and users who need to 
    Download and execute the script:
    ```bash
    wget "https://raw.githubusercontent.com/iamfarhad/feri-tunnel/main/tunnel.sh" -O tunnel.sh && chmod +x tunnel.sh && bash tunnel.sh 
-   chmod +x tunnel.sh
-   sudo ./tunnel.sh
    ```
 
 ### Example

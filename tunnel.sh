@@ -520,14 +520,13 @@ delete_tunnel() {
 
 delete_tunnel_by_id() {
     local id=$1
-    local db_path="tunnels.db"  # Ensure this is correct
     # Fetch required data from database
     # shellcheck disable=SC2155
-    local script_file=$(sqlite3 $db_path "SELECT script_file FROM tunnels WHERE id=$id;")
+    local script_file=$(sqlite3 "$db_file" "SELECT script_file FROM tunnels WHERE id=$id;")
     # shellcheck disable=SC2155
-    local service_file=$(sqlite3 $db_path "SELECT service_file FROM tunnels WHERE id=$id;")
+    local service_file=$(sqlite3 "$db_file" "SELECT service_file FROM tunnels WHERE id=$id;")
     # shellcheck disable=SC2155
-    local interface_name=$(sqlite3 $db_path "SELECT interface_name FROM tunnels WHERE id=$id;")
+    local interface_name=$(sqlite3 "$db_file" "SELECT interface_name FROM tunnels WHERE id=$id;")
 
     if [[ -z $script_file || -z $service_file || -z $interface_name ]]; then
         echo -e "${RED}Failed to find tunnel with ID $id. No records to delete.${NC}"
@@ -548,7 +547,7 @@ delete_tunnel_by_id() {
     sudo ip tunnel del "$interface_name"
 
     rm -f "/etc/systemd/system/$service_file"
-    sqlite3 $db_path "DELETE FROM tunnels WHERE id=$id;"
+    sqlite3 "$db_file" "DELETE FROM tunnels WHERE id=$id;"
 
     echo -e "${GREEN}Tunnel deleted successfully.${NC}"
 }

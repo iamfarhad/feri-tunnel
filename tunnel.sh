@@ -9,11 +9,15 @@
 #===============================================================================
 
 # Define color codes
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+RED='\033[1;31m'       # Bold Red for errors and critical messages
+GREEN='\033[1;32m'     # Bold Green for success messages
+YELLOW='\033[1;33m'    # Bold Yellow for options and warnings
+BLUE='\033[1;34m'      # Bold Blue for headers and important status
+# shellcheck disable=SC2034
+MAGENTA='\033[1;35m'   # Bold Magenta for emphasis
+# shellcheck disable=SC2034
+CYAN='\033[1;36m'      # Bold Cyan for additional info
+NC='\033[0m'           # No Color - Resets the color
 
 # Function to handle Ctrl+C (SIGINT)
 handle_exit() {
@@ -23,7 +27,7 @@ handle_exit() {
         echo -e "${RED}Exiting...${NC}"
         exit 0
     fi
-    main
+    show_menu
 }
 
 # Trap Ctrl+C (SIGINT)
@@ -497,26 +501,54 @@ show_all_tunnels() {
 
 # Function to delete a tunnel
 delete_tunnel() {
-    echo -e "${BLUE}Deleting a tunnel${NC}"
-    echo -e "${BLUE}Enter the ID of the tunnel to delete:${NC}"
+    echo -e "${YELLOW}Enter the ID of the tunnel to delete:${NC}"
     read tunnel_id
 
-    # Get script file path, service file path, and interface name
-    script_file=$(sqlite3 -separator " " "$db_file" "SELECT script_file FROM tunnels WHERE id=$tunnel_id;")
-    service_file=$(sqlite3 -separator " " "$db_file" "SELECT service_file FROM tunnels WHERE id=$tunnel_id;")
-    interface_name=$(sqlite3 -separator " " "$db_file" "SELECT interface_name FROM tunnels WHERE id=$tunnel_id;")
+    if [[ -z "$tunnel_id" ]]; then
+        echo -e "${RED}Error: No tunnel ID provided. Operation cancelled.${NC}"
+        return
+    fi
 
+    if ! [[ "$tunnel_id" =~ ^[0-9]+$ ]]; then
+        echo -e "${RED}Error: Invalid tunnel ID. Please enter a numeric value.${NC}"
+        return
+    fi
+
+    # Continue with deletion process
+    delete_tunnel_by_id "$tunnel_id"
+}
+
+delete_tunnel_by_id() {
+    local id=$1
+    local db_path="tunnels.db"  # Ensure this is correct
+    # Fetch required data from database
+    # shellcheck disable=SC2155
+    local script_file=$(sqlite3 $db_path "SELECT script_file FROM tunnels WHERE id=$id;")
+    # shellcheck disable=SC2155
+    local service_file=$(sqlite3 $db_path "SELECT service_file FROM tunnels WHERE id=$id;")
+    # shellcheck disable=SC2155
+    local interface_name=$(sqlite3 $db_path "SELECT interface_name FROM tunnels WHERE id=$id;")
+
+    if [[ -z $script_file || -z $service_file || -z $interface_name ]]; then
+        echo -e "${RED}Failed to find tunnel with ID $id. No records to delete.${NC}"
+        return
+    fi
+
+
+
+    # Proceed with deletion
+    echo "Deleting tunnel $id..."
     # Remove tunnel from system
-    sudo systemctl stop "$(basename "$service_file" .service)"
-    sudo systemctl disable "$(basename "$service_file" .service)"
+    sudo systemctl stop "$(basename "$service_file")"
+    sudo systemctl disable "$(basename "$service_file")"
     sudo rm "$service_file"
     sudo rm "$script_file"
 
-    # Delete tunnel from Ubuntu
-    sudo ip tunnel del $interface_name
 
-    # Remove tunnel from database
-    sqlite3 "$db_file" "DELETE FROM tunnels WHERE id=$tunnel_id;"
+    sudo ip tunnel del "$interface_name"
+
+    rm -f "/etc/systemd/system/$service_file"
+    sqlite3 $db_path "DELETE FROM tunnels WHERE id=$id;"
 
     echo -e "${GREEN}Tunnel deleted successfully.${NC}"
 }
@@ -525,10 +557,11 @@ delete_tunnel() {
 edit_tunnel() {
     echo -e "${BLUE}Editing a tunnel${NC}"
     echo -e "${BLUE}Enter the ID or interface name of the tunnel to edit:${NC}"
+    # shellcheck disable=SC2162
     read id_or_interface
 
     # Fetch tunnel information based on ID or interface name
-    tunnel_info=$(sqlite3 -separator " " "$db_file" "SELECT id, tunnel_type, interface_name, remote_ipv4, local_ipv4 FROM tunnels WHERE id=$id_or_interface OR interface_name='$id_or_interface';")
+    tunnel_info=$(sqlite3 -separator " " "$db_file" "SELECT id, tunnel_type, interface_name, remote_ipv4, local_ipv4, service_file FROM tunnels WHERE id=$id_or_interface OR interface_name='$id_or_interface';")
 
     if [[ -z $tunnel_info ]]; then
         echo -e "${RED}No tunnel found with the provided ID or interface name.${NC}"
@@ -540,6 +573,7 @@ edit_tunnel() {
     interface_name=$(echo "$tunnel_info" | awk '{print $3}')
     remote_ipv4=$(echo "$tunnel_info" | awk '{print $4}')
     local_ipv4=$(echo "$tunnel_info" | awk '{print $5}')
+    service_file=$(echo "$tunnel_info" | awk '{print $6}')
 
     echo -e "${YELLOW}Tunnel information:${NC}"
     echo -e "${BLUE}ID: ${NC}$tunnel_id"
@@ -550,24 +584,39 @@ edit_tunnel() {
 
     if [[ $tunnel_type == "IR" ]]; then
         echo -e "${BLUE}Enter the new Remote IPv4 (Kharej):${NC}"
+        # shellcheck disable=SC2162
         read new_remote_ipv4
         echo -e "${BLUE}Enter the new Local IPv4 (Iran):${NC}"
+        # shellcheck disable=SC2162
         read new_local_ipv4
+
     elif [[ $tunnel_type == "KHAREJ" ]]; then
         echo -e "${BLUE}Enter the new Remote IPv4 (Iran):${NC}"
+        # shellcheck disable=SC2162
         read new_remote_ipv4
+        # shellcheck disable=SC2162
         echo -e "${BLUE}Enter the new Local IPv4 (Kharej):${NC}"
+        # shellcheck disable=SC2162
         read new_local_ipv4
     else
         echo -e "${RED}Invalid tunnel type.${NC}"
         return
     fi
 
+    if ! validate_ipv4 "$new_remote_ipv4"; then
+        echo -e "${RED}Invalid local IPv4 address. Please enter a valid IPv4 address.${NC}"
+            return
+    fi
+    if ! validate_ipv4 "$new_local_ipv4"; then
+        echo -e "${RED}Invalid local IPv4 address. Please enter a valid IPv4 address.${NC}"
+            return
+    fi
+
     # Update tunnel information in the database
     sqlite3 "$db_file" "UPDATE tunnels SET remote_ipv4='$new_remote_ipv4', local_ipv4='$new_local_ipv4' WHERE id=$tunnel_id;"
 
 
-    sudo ip tunnel del $interface_name
+    sudo ip tunnel del "$interface_name"
     # Update script file
     update_script_file "$interface_name" "$new_remote_ipv4" "$new_local_ipv4"
 
@@ -575,7 +624,7 @@ edit_tunnel() {
     sudo systemctl daemon-reload
 
     # Restart service
-    sudo systemctl restart "tunnel_${interface_name}_*.service"
+    sudo systemctl restart "$(basename "$service_file")"
 
     echo -e "${GREEN}Tunnel updated successfully.${NC}"
 }
@@ -688,54 +737,59 @@ increase_user_limits() {
     fi
 }
 
-
-
-main() {
-# Main menu
-while true; do
-    echo ""
-    echo -e "${BLUE}Menu:${NC}"
-    echo -e "${YELLOW}1. Create IR Tunnel${NC}"
-    echo -e "${YELLOW}2. Create KHAREJ Tunnel${NC}"
-    echo -e "${YELLOW}3. Show all tunnels${NC}"
-    echo -e "${YELLOW}4. Edit a tunnel${NC}"
-    echo -e "${YELLOW}5. Delete a tunnel${NC}"
-    echo -e "${YELLOW}6. Optimize network${NC}"
-    echo -e "${YELLOW}7. System limit${NC}"
-    echo -e "${YELLOW}8. Exit${NC}"
-
-    read -p "Enter your choice: " choice
-    case $choice in
-        1)
-            create_ir_tunnel
-            ;;
-        2)
-            create_kharej_tunnel
-            ;;
-        3)
-            show_all_tunnels
-            ;;
-        4)
-            edit_tunnel
-            ;;
-        5)
-            delete_tunnel
-            ;;
-        6)
-            optimize_network
-            ;;
-        7)
-            increase_user_limits
-            ;;
-        8)
-            echo -e "${RED}Exiting...${NC}"
-            exit 0
-            ;;
-        *)
-            echo -e "${RED}Invalid choice. Please enter a valid option (1-5).${NC}"
-            ;;
-    esac
-done
+print_divider() {
+    echo -e "${CYAN}-------------------------------------------------${NC}"
 }
 
-main
+
+# Main menu function
+show_menu() {
+    clear
+    print_divider
+    echo -e "${BLUE}Welcome to Feri Tunnel Management Script${NC}"
+    print_divider
+    echo -e "${YELLOW}1. Create IR Tunnel${NC}"
+    echo -e "${YELLOW}2. Create KHAREJ Tunnel${NC}"
+    echo -e "${YELLOW}3. Show All Tunnels${NC}"
+    echo -e "${YELLOW}4. Edit Tunnel${NC}"
+    echo -e "${YELLOW}5. Delete Tunnel${NC}"
+    echo -e "${YELLOW}6. Optimize Network${NC}"
+    echo -e "${YELLOW}7. Increase User Limit${NC}"
+    echo -e "${MAGENTA}8. Exit${NC}"
+    print_divider
+    # shellcheck disable=SC2162
+    read -p "Enter your choice [1-9]: " choice
+    run_choice "$choice"
+}
+
+# Function to handle user choice
+run_choice() {
+    case $1 in
+        1) create_ir_tunnel;;
+        2) create_kharej_tunnel;;
+        3) show_all_tunnels;;
+        4) edit_tunnel;;
+        5) delete_tunnel;;
+        6) optimize_network;;
+        7) increase_user_limits;;
+        8) echo -e "${RED}Exiting...${NC}"
+           exit 0;;
+        *) echo -e "${RED}Invalid choice, please select a valid option.${NC}"
+           pause;;
+    esac
+    pause
+}
+
+# Pause function for readability
+pause() {
+    echo -e "${GREEN}Press any key to continue...${NC}"
+    # shellcheck disable=SC2162
+    # shellcheck disable=SC2034
+    read -p "" fackEnterKey
+    show_menu
+}
+
+# Functions like create_ir_tunnel, create_kharej_tunnel, etc., would need to be defined here
+
+# Starting the script with the menu
+show_menu

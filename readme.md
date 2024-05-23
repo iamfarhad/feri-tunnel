@@ -5,6 +5,9 @@
 
 This script sets up and manages the Feri Tunnel, a hypothetical tunneling tool designed for secure and efficient data transfer across networks.
 
+
+telegram group https://t.me/feritunnel
+
 ## Table of Contents
 
 - [For End Users](#for-end-users)

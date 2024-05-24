@@ -793,12 +793,12 @@ show_all_gost_tunnels() {
     echo -e "${BLUE}Listing all Gost tunnels:${NC}"
     tunnels=$(sqlite3 "$db_file" "SELECT id, protocol, local_ipv6, port_range, service_name, created_date FROM gost_tunnels;")
 
-    echo -e "${MAGENTA}ID\tProtocol\tRemote IPv6\tPort Range\tService Name\tCreated Date\tService Status${NC}"
+    printf "%-5s %-10s %-25s %-15s %-35s %-25s %-15s\n" "ID" "Protocol" "Remote IPv6" "Port Range" "Service Name" "Created Date" "Service Status"
     echo -e "${MAGENTA}----------------------------------------------------------------------------------------------------------------------${NC}"
 
     while IFS='|' read -r id protocol local_ipv6 port_range service_name created_date; do
         service_status=$(systemctl is-active "$service_name" 2>/dev/null)
-        echo -e "${YELLOW}$id\t$protocol\t$local_ipv6\t$port_range\t$service_name\t$created_date\t$service_status${NC}"
+        printf "%-5s %-10s %-25s %-15s %-35s %-25s %-15s\n" "$id" "$protocol" "$local_ipv6" "$port_range" "$service_name" "$created_date" "$service_status"
     done <<< "$tunnels"
 }
 

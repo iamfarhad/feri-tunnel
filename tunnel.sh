@@ -1090,8 +1090,8 @@ show_menu() {
     print_divider
     echo -e "${BLUE}Welcome to Feri Tunnel Management Script${NC}"
     print_divider
-    echo -e "${YELLOW}1. Create IR Tunnel${NC}"
-    echo -e "${YELLOW}2. Create KHAREJ Tunnel${NC}"
+    echo -e "${YELLOW}1. Create IR Tunnel(6 to 4)${NC}"
+    echo -e "${YELLOW}2. Create KHAREJ Tunnel(6 to 4)${NC}"
     echo -e "${YELLOW}3. Show All Tunnels${NC}"
     echo -e "${YELLOW}4. Edit Tunnel${NC}"
     echo -e "${YELLOW}5. Delete Tunnel${NC}"

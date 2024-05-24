@@ -111,7 +111,6 @@ check_os() {
     fi
 }
 
-
 optimize_tcp() {
     echo -e "${BLUE}Optimizing TCP settings for better performance...${NC}"
 
@@ -124,179 +123,58 @@ optimize_tcp() {
 net.ipv4.ip_forward = 1
 net.ipv6.conf.all.forwarding = 1
 
-
-################################################################
-################################################################
-
-
-# /etc/sysctl.conf
-# These parameters in this file will be added/updated to the sysctl.conf file.
-# Read More: https://github.com/hawshemi/Linux-Optimizer/blob/main/files/sysctl.conf
-
-
-## File system settings
-## ----------------------------------------------------------------
-
-# Set the maximum number of open file descriptors
+# Additional optimizations
 fs.file-max = 67108864
-
-
-## Network core settings
-## ----------------------------------------------------------------
-
-# Specify default queuing discipline for network devices
 net.core.default_qdisc = fq_codel
-
-# Configure maximum network device backlog
 net.core.netdev_max_backlog = 32768
-
-# Set maximum socket receive buffer
 net.core.optmem_max = 262144
-
-# Define maximum backlog of pending connections
 net.core.somaxconn = 65536
-
-# Configure maximum TCP receive buffer size
 net.core.rmem_max = 33554432
-
-# Set default TCP receive buffer size
 net.core.rmem_default = 1048576
-
-# Configure maximum TCP send buffer size
 net.core.wmem_max = 33554432
-
-# Set default TCP send buffer size
 net.core.wmem_default = 1048576
-
-
-## TCP settings
-## ----------------------------------------------------------------
-
-# Define socket receive buffer sizes
 net.ipv4.tcp_rmem = 16384 1048576 33554432
-
-# Specify socket send buffer sizes
 net.ipv4.tcp_wmem = 16384 1048576 33554432
-
-# Set TCP congestion control algorithm to BBR
 net.ipv4.tcp_congestion_control = bbr
-
-# Configure TCP FIN timeout period
 net.ipv4.tcp_fin_timeout = 25
-
-# Set keepalive time (seconds)
 net.ipv4.tcp_keepalive_time = 1200
-
-# Configure keepalive probes count and interval
 net.ipv4.tcp_keepalive_probes = 7
 net.ipv4.tcp_keepalive_intvl = 30
-
-# Define maximum orphaned TCP sockets
 net.ipv4.tcp_max_orphans = 819200
-
-# Set maximum TCP SYN backlog
 net.ipv4.tcp_max_syn_backlog = 20480
-
-# Configure maximum TCP Time Wait buckets
 net.ipv4.tcp_max_tw_buckets = 1440000
-
-# Define TCP memory limits
 net.ipv4.tcp_mem = 65536 1048576 33554432
-
-# Enable TCP MTU probing
 net.ipv4.tcp_mtu_probing = 1
-
-# Define minimum amount of data in the send buffer before TCP starts sending
 net.ipv4.tcp_notsent_lowat = 32768
-
-# Specify retries for TCP socket to establish connection
 net.ipv4.tcp_retries2 = 8
-
-# Enable TCP SACK and DSACK
 net.ipv4.tcp_sack = 1
 net.ipv4.tcp_dsack = 1
-
-# Disable TCP slow start after idle
 net.ipv4.tcp_slow_start_after_idle = 0
-
-# Enable TCP window scaling
 net.ipv4.tcp_window_scaling = 1
 net.ipv4.tcp_adv_win_scale = -2
-
-# Enable TCP ECN
 net.ipv4.tcp_ecn = 1
 net.ipv4.tcp_ecn_fallback = 1
-
-# Enable the use of TCP SYN cookies to help protect against SYN flood attacks
 net.ipv4.tcp_syncookies = 1
-
-
-## UDP settings
-## ----------------------------------------------------------------
-
-# Define UDP memory limits
 net.ipv4.udp_mem = 65536 1048576 33554432
-
-
-## IPv6 settings
-## ----------------------------------------------------------------
-
-# Enable IPv6
 net.ipv6.conf.all.disable_ipv6 = 0
-
-# Enable IPv6 by default
 net.ipv6.conf.default.disable_ipv6 = 0
-
-# Enable IPv6 on the loopback interface (lo)
 net.ipv6.conf.lo.disable_ipv6 = 0
-
-
-## UNIX domain sockets
-## ----------------------------------------------------------------
-
-# Set maximum queue length of UNIX domain sockets
 net.unix.max_dgram_qlen = 256
-
-
-## Virtual memory (VM) settings
-## ----------------------------------------------------------------
-
-# Specify minimum free Kbytes at which VM pressure happens
 vm.min_free_kbytes = 65536
-
-# Define how aggressively swap memory pages are used
 vm.swappiness = 10
-
-# Set the tendency of the kernel to reclaim memory used for caching of directory and inode objects
 vm.vfs_cache_pressure = 250
-
-
-## Network Configuration
-## ----------------------------------------------------------------
-
-# Configure reverse path filtering
 net.ipv4.conf.default.rp_filter = 2
 net.ipv4.conf.all.rp_filter = 2
-
-# Disable source route acceptance
 net.ipv4.conf.all.accept_source_route = 0
 net.ipv4.conf.default.accept_source_route = 0
-
-# Neighbor table settings
 net.ipv4.neigh.default.gc_thresh1 = 512
 net.ipv4.neigh.default.gc_thresh2 = 2048
 net.ipv4.neigh.default.gc_thresh3 = 16384
 net.ipv4.neigh.default.gc_stale_time = 60
-
-# ARP settings
 net.ipv4.conf.default.arp_announce = 2
 net.ipv4.conf.lo.arp_announce = 2
 net.ipv4.conf.all.arp_announce = 2
-
-# Kernel panic timeout
 kernel.panic = 1
-
-# Set dirty page ratio for virtual memory
 vm.dirty_ratio = 20
 EOF'
 
@@ -352,8 +230,6 @@ install_dependencies() {
     sudo apt install -y openssl
 }
 
-
-
 # Call the check functions
 check_root
 check_os
@@ -363,13 +239,13 @@ install_dependencies
 create_ir_tunnel() {
     echo -e "${BLUE}Creating IR Tunnel${NC}"
 
-    echo -e "${BLUE}Enter the interface name:${NC}"
+    echo -e "${MAGENTA}Enter the interface name:${NC}"
     read interface_name
 
-    echo -e "${BLUE}Enter the local IPv4 address (Iran):${NC}"
+    echo -e "${MAGENTA}Enter the local IPv4 address (Iran):${NC}"
     read local_ipv4
 
-    echo -e "${BLUE}Enter the remote IPv4 address (Kharej):${NC}"
+    echo -e "${MAGENTA}Enter the remote IPv4 address (Kharej):${NC}"
     read remote_ipv4
 
     create_tunnel $interface_name $local_ipv4 $remote_ipv4 "IR"
@@ -379,13 +255,13 @@ create_ir_tunnel() {
 create_kharej_tunnel() {
     echo -e "${BLUE}Creating KHAREJ Tunnel${NC}"
 
-    echo -e "${BLUE}Enter the interface name:${NC}"
+    echo -e "${MAGENTA}Enter the interface name:${NC}"
     read interface_name
 
-    echo -e "${BLUE}Enter the local IPv4 address (Kharej):${NC}"
+    echo -e "${MAGENTA}Enter the local IPv4 address (Kharej):${NC}"
     read local_ipv4
 
-    echo -e "${BLUE}Enter the remote IPv4 address (Iran):${NC}"
+    echo -e "${MAGENTA}Enter the remote IPv4 address (Iran):${NC}"
     read remote_ipv4
 
     create_tunnel $interface_name $local_ipv4 $remote_ipv4 "KHAREJ"
@@ -409,13 +285,12 @@ create_tunnel() {
         return
     fi
 
-        # Generate and check IPv6 address
-        local_ipv6=$(generate_ipv6 "$tunnel_type")
-        # shellcheck disable=SC2181
-        if [[ $? -ne 0 ]]; then
-            echo -e "${RED}$local_ipv6${NC}"  # Display error message if IPv6 generation fails
-            return
-        fi
+    # Generate and check IPv6 address
+    local_ipv6=$(generate_ipv6 "$tunnel_type")
+    if [[ $? -ne 0 ]]; then
+        echo -e "${RED}$local_ipv6${NC}"  # Display error message if IPv6 generation fails
+        return
+    fi
 
     # Create the script file name
     script_file="$script_dir/tunnel_${interface_name}_$(openssl rand -hex 4).sh"
@@ -435,7 +310,7 @@ EOF
     chmod +x "$script_file"
 
     echo -e "${GREEN}Tunnel creation script generated successfully: ${script_file}${NC}"
-    echo -e "${RED}Your local IPv6 address is: ${local_ipv6%/64}${NC}"
+    echo -e "${GREEN}Your local IPv6 address is: ${local_ipv6%/64}${NC}"
 
     # Generate systemd service file
     generate_systemd_service $interface_name "$script_file" $local_ipv6
@@ -566,16 +441,13 @@ delete_tunnel_by_id() {
         return
     fi
 
-
-
     # Proceed with deletion
-    echo "Deleting tunnel $id..."
+    echo -e "${BLUE}Deleting tunnel $id...${NC}"
     # Remove tunnel from system
     sudo systemctl stop "$(basename "$service_file")"
     sudo systemctl disable "$(basename "$service_file")"
     sudo rm "$service_file"
     sudo rm "$script_file"
-
 
     sudo ip tunnel del "$interface_name"
 
@@ -588,8 +460,7 @@ delete_tunnel_by_id() {
 # Function to edit a tunnel
 edit_tunnel() {
     echo -e "${BLUE}Editing a tunnel${NC}"
-    echo -e "${BLUE}Enter the ID or interface name of the tunnel to edit:${NC}"
-    # shellcheck disable=SC2162
+    echo -e "${MAGENTA}Enter the ID or interface name of the tunnel to edit:${NC}"
     read id_or_interface
 
     # Fetch tunnel information based on ID or interface name
@@ -615,20 +486,15 @@ edit_tunnel() {
     echo -e "${BLUE}Local IPv4: ${NC}$local_ipv4"
 
     if [[ $tunnel_type == "IR" ]]; then
-        echo -e "${BLUE}Enter the new Remote IPv4 (Kharej):${NC}"
-        # shellcheck disable=SC2162
+        echo -e "${MAGENTA}Enter the new Remote IPv4 (Kharej):${NC}"
         read new_remote_ipv4
-        echo -e "${BLUE}Enter the new Local IPv4 (Iran):${NC}"
-        # shellcheck disable=SC2162
+        echo -e "${MAGENTA}Enter the new Local IPv4 (Iran):${NC}"
         read new_local_ipv4
 
     elif [[ $tunnel_type == "KHAREJ" ]]; then
-        echo -e "${BLUE}Enter the new Remote IPv4 (Iran):${NC}"
-        # shellcheck disable=SC2162
+        echo -e "${MAGENTA}Enter the new Remote IPv4 (Iran):${NC}"
         read new_remote_ipv4
-        # shellcheck disable=SC2162
-        echo -e "${BLUE}Enter the new Local IPv4 (Kharej):${NC}"
-        # shellcheck disable=SC2162
+        echo -e "${MAGENTA}Enter the new Local IPv4 (Kharej):${NC}"
         read new_local_ipv4
     else
         echo -e "${RED}Invalid tunnel type.${NC}"
@@ -637,16 +503,15 @@ edit_tunnel() {
 
     if ! validate_ipv4 "$new_remote_ipv4"; then
         echo -e "${RED}Invalid local IPv4 address. Please enter a valid IPv4 address.${NC}"
-            return
+        return
     fi
     if ! validate_ipv4 "$new_local_ipv4"; then
         echo -e "${RED}Invalid local IPv4 address. Please enter a valid IPv4 address.${NC}"
-            return
+        return
     fi
 
     # Update tunnel information in the database
     sqlite3 "$db_file" "UPDATE tunnels SET remote_ipv4='$new_remote_ipv4', local_ipv4='$new_local_ipv4' WHERE id=$tunnel_id;"
-
 
     sudo ip tunnel del "$interface_name"
     # Update script file
@@ -701,7 +566,6 @@ generate_ipv6() {
     fi
 
     # Initialize or update the SQLite database for tracking the last IP index
-    # shellcheck disable=SC2155
     local last_index=$(sqlite3 "$db_file" "SELECT last_assigned_index FROM ip_state WHERE server_type = '$server_type';")
 
     if [ -z "$last_index" ] || [ "$last_index" -lt "$start" ] || [ "$last_index" -ge "$end" ]; then
@@ -725,7 +589,7 @@ generate_ipv6() {
 }
 
 increase_user_limits() {
-    echo "Increasing user limits..."
+    echo -e "${BLUE}Increasing user limits...${NC}"
 
     # Apply ulimit settings
     ulimit -c unlimited  # Core file size
@@ -743,16 +607,15 @@ increase_user_limits() {
     ulimit -v unlimited  # Virtual memory
     ulimit -x unlimited  # File locks
 
-    echo "User limits have been increased."
+    echo -e "${GREEN}User limits have been increased.${NC}"
 
     # Ask user if they want to reboot
     read -p "Reboot the system now? (y/n): " confirm_reboot
     if [[ $confirm_reboot =~ ^[Yy]$ ]]; then
-        echo "Rebooting now..."
+        echo -e "${RED}Rebooting now...${NC}"
         sudo reboot
     else
-        echo "Reboot canceled. Changes will take full effect after the next reboot."
-        mai4
+        echo -e "${YELLOW}Reboot canceled. Changes will take full effect after the next reboot.${NC}"
     fi
 }
 
@@ -786,9 +649,9 @@ get_all_release_info() {
 
 select_tunnel_type() {
     echo -e "${BLUE}Select the tunnel type:${NC}"
-    echo -e "1) TCP"
-    echo -e "2) WebSocket (WS)"
-    echo -e "3) gRPC"
+    echo -e "${YELLOW}1) TCP${NC}"
+    echo -e "${YELLOW}2) WebSocket (WS)${NC}"
+    echo -e "${YELLOW}3) gRPC${NC}"
     echo -n "Enter your choice: "
     read tunnel_type_selection
     case $tunnel_type_selection in
@@ -800,19 +663,17 @@ select_tunnel_type() {
 }
 
 create_gost_tunnel_single_port() {
-    echo "Enter the local IPv6 address for KHAREJ:"
-    # shellcheck disable=SC2162
+    echo -e "${MAGENTA}Enter the local IPv6 address for KHAREJ:${NC}"
     read local_ipv6
     local_ipv6=${local_ipv6// /}  # Remove all spaces from input
 
-    echo "Enter Gost Port (comma-separated for multiple ports, e.g., 8080 or 8080,8081,8082):"
-    # shellcheck disable=SC2162
+    echo -e "${MAGENTA}Enter Gost Port (comma-separated for multiple ports, e.g., 8080 or 8080,8081,8082):${NC}"
     read ports
     ports=${ports// /}  # Remove all spaces from input
 
     # Validate the IPv6 address
     if ! validate_ipv6 "$local_ipv6"; then
-        echo "Invalid IPv6 address."
+        echo -e "${RED}Invalid IPv6 address.${NC}"
         return 1
     fi
 
@@ -820,7 +681,7 @@ create_gost_tunnel_single_port() {
     IFS=',' read -ra PORT_ARRAY <<< "$ports"
     for port in "${PORT_ARRAY[@]}"; do
         if ! [[ "$port" =~ ^[0-9]+$ ]] || [ "$port" -lt 1 ] || [ "$port" -gt 65535 ]; then
-            echo "Invalid port: $port"
+            echo -e "${RED}Invalid port: $port${NC}"
             return 1
         fi
     done
@@ -834,14 +695,12 @@ create_gost_tunnel_single_port() {
     ensure_ports_free "$ports"
 
     # Ask for tunnel type (tcp, ws, grpc)
-    echo "Select tunnel type (1 for tcp, 2 for ws, 3 for grpc):"
-    # shellcheck disable=SC2162
-    # Select tunnel type
+    echo -e "${BLUE}Select tunnel type (1 for tcp, 2 for ws, 3 for grpc):${NC}"
     if ! select_tunnel_type; then
         return 1
     fi
 
-    echo "Setting up Gost tunnel on ports ${ports} with $tunnel_type..."
+    echo -e "${BLUE}Setting up Gost tunnel on ports ${ports} with $tunnel_type...${NC}"
     gost_cmd=""
     for port in "${PORT_ARRAY[@]}"; do
         if [ -z "$gost_cmd" ]; then
@@ -862,29 +721,29 @@ create_gost_tunnel_single_port() {
     sqlite3 "$db_file" "INSERT INTO gost_tunnels (protocol, local_ipv6, port_range, service_name, service_file, tunnel_type)
                         VALUES ('$tunnel_type', '$local_ipv6', '$ports', '$service_name', '$service_file', 'single');"
 
-    echo "Gost tunnel service $service_name created and started successfully."
+    echo -e "${GREEN}Gost tunnel service $service_name created and started successfully.${NC}"
 }
 
 create_gost_tunnel_multi_range() {
-    echo "Enter the local IPv6 address for KHAREJ:"
+    echo -e "${MAGENTA}Enter the local IPv6 address for KHAREJ:${NC}"
     read local_ipv6
     local_ipv6=${local_ipv6// /}  # Remove all spaces from input
 
-    echo "Enter the starting port number for the Gost tunnel:"
+    echo -e "${MAGENTA}Enter the starting port number for the Gost tunnel:${NC}"
     read start_port
 
-    echo "Enter the ending port number for the Gost tunnel:"
+    echo -e "${MAGENTA}Enter the ending port number for the Gost tunnel:${NC}"
     read end_port
 
     # Validate the IPv6 address
     if ! validate_ipv6 "$local_ipv6"; then
-        echo "Invalid IPv6 address."
+        echo -e "${RED}Invalid IPv6 address.${NC}"
         return 1
     fi
 
     # Validate the port range
     if ! [[ "$start_port" =~ ^[0-9]+$ ]] || ! [[ "$end_port" =~ ^[0-9]+$ ]] || [ "$start_port" -lt 1 ] || [ "$end_port" -gt 65535 ] || [ "$start_port" -gt "$end_port" ]; then
-        echo "Invalid port range."
+        echo -e "${RED}Invalid port range.${NC}"
         return 1
     fi
 
@@ -901,7 +760,7 @@ create_gost_tunnel_multi_range() {
         return 1
     fi
 
-    echo "Setting up Gost tunnel from port $start_port to $end_port with $tunnel_type..."
+    echo -e "${BLUE}Setting up Gost tunnel from port $start_port to $end_port with $tunnel_type...${NC}"
     gost_cmd=""
 
     for port in $(seq $start_port $end_port); do
@@ -916,10 +775,9 @@ create_gost_tunnel_multi_range() {
     service_name="gost_multi_${start_port}_${end_port}_$(openssl rand -hex 4)"
     service_file="/etc/systemd/system/$service_name.service"
 
-        # Stop any existing services that might be using the same ports
-        sudo systemctl stop "$service_name" 2>/dev/null || true
-        # shellcheck disable=SC2086
-        sudo systemctl disable $service_name 2>/dev/null || true
+    # Stop any existing services that might be using the same ports
+    sudo systemctl stop "$service_name" 2>/dev/null || true
+    sudo systemctl disable "$service_name" 2>/dev/null || true
 
     # Create a systemd service for the Gost tunnel
     create_gost_service "$service_name" "$service_file" "$gost_cmd"
@@ -928,19 +786,19 @@ create_gost_tunnel_multi_range() {
     sqlite3 "$db_file" "INSERT INTO gost_tunnels (protocol, local_ipv6, port_range, service_name, service_file, tunnel_type)
                         VALUES ('$tunnel_type', '$local_ipv6', '$start_port-$end_port', '$service_name', '$service_file', 'multi');"
 
-    echo "Gost tunnel service $service_name created and started successfully."
+    echo -e "${GREEN}Gost tunnel service $service_name created and started successfully.${NC}"
 }
 
 show_all_gost_tunnels() {
     echo -e "${BLUE}Listing all Gost tunnels:${NC}"
     tunnels=$(sqlite3 "$db_file" "SELECT id, protocol, local_ipv6, port_range, service_name, created_date FROM gost_tunnels;")
 
-    echo -e "ID\tProtocol\tLocal IPv6\tPort Range\tService Name\tCreated Date\tService Status"
-    echo -e "----------------------------------------------------------------------------------------------------------------------"
+    echo -e "${MAGENTA}ID\tProtocol\tRemote IPv6\tPort Range\tService Name\tCreated Date\tService Status${NC}"
+    echo -e "${MAGENTA}----------------------------------------------------------------------------------------------------------------------${NC}"
 
     while IFS='|' read -r id protocol local_ipv6 port_range service_name created_date; do
         service_status=$(systemctl is-active "$service_name" 2>/dev/null)
-        echo -e "$id\t$protocol\t$local_ipv6\t$port_range\t$service_name\t$created_date\t$service_status"
+        echo -e "${YELLOW}$id\t$protocol\t$local_ipv6\t$port_range\t$service_name\t$created_date\t$service_status${NC}"
     done <<< "$tunnels"
 }
 
@@ -965,19 +823,19 @@ ensure_ports_free() {
 }
 
 delete_gost_tunnel() {
-    echo "Enter the ID of the Gost tunnel to delete:"
+    echo -e "${MAGENTA}Enter the ID of the Gost tunnel to delete:${NC}"
     read tunnel_id
 
     # Validate the input to ensure it's a valid number
     if ! [[ "$tunnel_id" =~ ^[0-9]+$ ]]; then
-        echo "Invalid ID. Please enter a valid numeric ID."
+        echo -e "${RED}Invalid ID. Please enter a valid numeric ID.${NC}"
         return 1
     fi
 
     # Fetch current details from the database
     tunnel_info=$(sqlite3 -separator " " "$db_file" "SELECT service_name, service_file FROM gost_tunnels WHERE id=$tunnel_id;")
     if [[ -z $tunnel_info ]]; then
-        echo "No tunnel found with the provided ID."
+        echo -e "${RED}No tunnel found with the provided ID.${NC}"
         return 1
     fi
 
@@ -992,15 +850,14 @@ delete_gost_tunnel() {
     if [ -f "$service_file" ]; then
         sudo rm "$service_file"
     else
-        echo "Service file $service_file does not exist."
+        echo -e "${YELLOW}Service file $service_file does not exist.${NC}"
     fi
 
     # Remove the tunnel from the database
     sqlite3 "$db_file" "DELETE FROM gost_tunnels WHERE id=$tunnel_id;"
 
-    echo "Gost tunnel service $service_name deleted successfully."
+    echo -e "${GREEN}Gost tunnel service $service_name deleted successfully.${NC}"
 }
-
 
 create_gost_service() {
     local service_name=$1
@@ -1023,7 +880,7 @@ EOF
     sudo systemctl daemon-reload
     sudo systemctl enable $service_name
     sudo systemctl start $service_name
-    echo "Gost tunnel service $service_name started successfully."
+    echo -e "${GREEN}Gost tunnel service $service_name started successfully.${NC}"
 }
 
 install_gost() {
@@ -1031,18 +888,18 @@ install_gost() {
     release_info=$(get_all_release_info)
 
     # Print release info for debugging
-    echo "Release Info:"
+    echo -e "${YELLOW}Release Info:${NC}"
     # Extract the latest version tag and download URL for the Linux AMD64 tar.gz file
     LATEST_VERSION=$(echo "$release_info" | jq -r '.[0].tag_name')
     DOWNLOAD_URL=$(echo "$release_info" | jq -r '.[0].assets[] | select(.name | contains("linux_amd64.tar.gz")).browser_download_url')
 
     # Print extracted information for debugging
-    echo "Latest Version: $LATEST_VERSION"
-    echo "Download URL: $DOWNLOAD_URL"
+    echo -e "${GREEN}Latest Version: $LATEST_VERSION${NC}"
+    echo -e "${GREEN}Download URL: $DOWNLOAD_URL${NC}"
 
     # Check if the download URL is found
     if [ -z "$DOWNLOAD_URL" ]; then
-      echo "Error: Could not find the download URL. Please check the release info."
+      echo -e "${RED}Error: Could not find the download URL. Please check the release info.${NC}"
       exit 1
     fi
 
@@ -1051,22 +908,22 @@ install_gost() {
     INSTALL_PATH="$INSTALL_DIR/gost"
 
     # Download the latest release
-    echo "Downloading gost $LATEST_VERSION..."
+    echo -e "${YELLOW}Downloading gost $LATEST_VERSION...${NC}"
     curl -L -o gost.tar.gz "$DOWNLOAD_URL"
 
     # Check if the download was successful
     if [[ $? -ne 0 ]]; then
-      echo "Error downloading gost. Please check the URL and try again."
+      echo -e "${RED}Error downloading gost. Please check the URL and try again.${NC}"
       exit 1
     fi
 
     # Extract the downloaded tar.gz file
-    echo "Extracting gost.tar.gz..."
+    echo -e "${GREEN}Extracting gost.tar.gz...${NC}"
     sudo tar -xzf gost.tar.gz
 
     # Check if the extraction was successful
     if [[ $? -ne 0 ]]; then
-      echo "Error extracting gost.tar.gz. Please check the file format."
+      echo -e "${RED}Error extracting gost.tar.gz. Please check the file format.${NC}"
       exit 1
     fi
 
@@ -1077,15 +934,15 @@ install_gost() {
     sudo chmod +x "$GOST_BINARY_PATH"
 
     # Move the gost binary to the installation directory
-    echo "Installing gost to $INSTALL_PATH..."
+    echo -e "${BLUE}Installing gost to $INSTALL_PATH...${NC}"
     sudo mv "$GOST_BINARY_PATH" "$INSTALL_PATH"
 
     # Verify the installation
-    echo "Verifying the installation..."
+    echo -e "${YELLOW}Verifying the installation...${NC}"
     if [[ $? -eq 0 ]]; then
-      echo "gost $LATEST_VERSION has been installed successfully."
+      echo -e "${GREEN}gost $LATEST_VERSION has been installed successfully.${NC}"
     else
-      echo "Error installing gost. Please check the installation steps."
+      echo -e "${RED}Error installing gost. Please check the installation steps.${NC}"
       exit 1
     fi
 }
@@ -1095,19 +952,19 @@ print_divider() {
 }
 
 edit_gost_tunnel() {
-    echo "Enter the ID of the Gost tunnel to edit:"
+    echo -e "${MAGENTA}Enter the ID of the Gost tunnel to edit:${NC}"
     read tunnel_id
 
     # Validate the input to ensure it's a valid number
     if ! [[ "$tunnel_id" =~ ^[0-9]+$ ]]; then
-        echo "Invalid ID. Please enter a valid numeric ID."
+        echo -e "${RED}Invalid ID. Please enter a valid numeric ID.${NC}"
         return 1
     fi
 
     # Fetch current details from the database
     tunnel_info=$(sqlite3 -separator " " "$db_file" "SELECT protocol, local_ipv6, port_range, service_name, service_file, tunnel_type FROM gost_tunnels WHERE id=$tunnel_id;")
     if [[ -z $tunnel_info ]]; then
-        echo "No tunnel found with the provided ID."
+        echo -e "${RED}No tunnel found with the provided ID.${NC}"
         return 1
     fi
 
@@ -1118,26 +975,26 @@ edit_gost_tunnel() {
     service_file=$(echo "$tunnel_info" | awk '{print $5}')
     tunnel_type=$(echo "$tunnel_info" | awk '{print $6}')
 
-    echo "Current Protocol: $protocol"
-    echo "Current Local IPv6: $local_ipv6"
-    echo "Current Port Range: $port_range"
-    echo "Current Tunnel Type: $tunnel_type"
+    echo -e "${YELLOW}Current Protocol: $protocol${NC}"
+    echo -e "${YELLOW}Current Local IPv6: $local_ipv6${NC}"
+    echo -e "${YELLOW}Current Port Range: $port_range${NC}"
+    echo -e "${YELLOW}Current Tunnel Type: $tunnel_type${NC}"
 
-    echo "Enter new Local IPv6 address:"
+    echo -e "${MAGENTA}Enter new Local IPv6 address:${NC}"
     read new_local_ipv6
     new_local_ipv6=${new_local_ipv6// /}  # Remove all spaces from input
 
     if [ "$tunnel_type" == "single" ]; then
-        echo "Enter new Port (comma-separated for multiple ports, e.g., 8080 or 8080,8081,8082):"
+        echo -e "${MAGENTA}Enter new Port (comma-separated for multiple ports, e.g., 8080 or 8080,8081,8082):${NC}"
     else
-        echo "Enter new Port Range (e.g., 8080-8085):"
+        echo -e "${MAGENTA}Enter new Port Range (e.g., 8080-8085):${NC}"
     fi
     read new_port_range
     new_port_range=${new_port_range// /}  # Remove all spaces from input
 
     # Validate the new IPv6 address
     if ! validate_ipv6 "$new_local_ipv6"; then
-        echo "Invalid IPv6 address."
+        echo -e "${RED}Invalid IPv6 address.${NC}"
         return 1
     fi
 
@@ -1153,7 +1010,7 @@ edit_gost_tunnel() {
 
         # Validate the port range
         if ! [[ "$start_port" =~ ^[0-9]+$ ]] || ! [[ "$end_port" =~ ^[0-9]+$ ]] || [ "$start_port" -lt 1 ] || [ "$end_port" -gt 65535 ] || [ "$start_port" -gt "$end_port" ]; then
-            echo "Invalid port range."
+            echo -e "${RED}Invalid port range.${NC}"
             return 1
         fi
 
@@ -1182,7 +1039,7 @@ edit_gost_tunnel() {
         IFS=',' read -ra PORT_ARRAY <<< "$new_port_range"
         for port in "${PORT_ARRAY[@]}"; do
             if ! [[ "$port" =~ ^[0-9]+$ ]] || [ "$port" -lt 1 ] || [ "$port" -gt 65535 ]; then
-                echo "Invalid port: $port"
+                echo -e "${RED}Invalid port: $port${NC}"
                 return 1
             fi
         done
@@ -1215,7 +1072,7 @@ edit_gost_tunnel() {
     # Update the database with the new service details
     sqlite3 "$db_file" "UPDATE gost_tunnels SET local_ipv6='$new_local_ipv6', port_range='$new_port_range', service_name='$new_service_name', service_file='$new_service_file' WHERE id=$tunnel_id;"
 
-    echo "Gost tunnel updated successfully."
+    echo -e "${GREEN}Gost tunnel updated successfully.${NC}"
 }
 
 # Main menu function
@@ -1233,17 +1090,17 @@ show_menu() {
     echo -e "${YELLOW}6. Optimize Network${NC}"
     echo -e "${YELLOW}7. Increase User Limit${NC}"
     echo -e "${YELLOW}8. Install Gost v3${NC}"
-    echo -e "${YELLOW}9. Create Gost tunnel ipv6(single port)${NC}"
-    echo -e "${YELLOW}10. Create Gost tunnel ipv6(multi port)${NC}"
-    echo -e "${YELLOW}11. Show gost tunnels${NC}"
-    echo -e "${YELLOW}12. Edit gost tunnel${NC}"
-    echo -e "${YELLOW}13. Delete gost tunnel${NC}"
+    echo -e "${YELLOW}9. Create Gost tunnel ipv6 (single port)${NC}"
+    echo -e "${YELLOW}10. Create Gost tunnel ipv6 (multi-port)${NC}"
+    echo -e "${YELLOW}11. Show Gost Tunnels${NC}"
+    echo -e "${YELLOW}12. Edit Gost Tunnel${NC}"
+    echo -e "${YELLOW}13. Delete Gost Tunnel${NC}"
     echo -e "${MAGENTA}0. Exit${NC}"
     print_divider
-    # shellcheck disable=SC2162
-    read -p "Enter your choice [1-9]: " choice
+    read -p "Enter your choice [0-13]: " choice
     run_choice "$choice"
 }
+
 # Function to handle user choice
 run_choice() {
     case $1 in
@@ -1271,13 +1128,9 @@ run_choice() {
 # Pause function for readability
 pause() {
     echo -e "${GREEN}Press any key to continue...${NC}"
-    # shellcheck disable=SC2162
-    # shellcheck disable=SC2034
     read -p "" fackEnterKey
     show_menu
 }
-
-# Functions like create_ir_tunnel, create_kharej_tunnel, etc., would need to be defined here
 
 # Starting the script with the menu
 show_menu

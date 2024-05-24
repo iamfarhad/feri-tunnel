@@ -18,6 +18,46 @@ CYAN='\033[0;36m'
 BOLD='\033[1m'
 NC='\033[0m' # No Color
 
+# Determine script directory
+script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+
+# SQLite database file
+db_file="$script_dir/tunnels.db"
+
+# Function to create SQLite table for tunnels
+create_table() {
+    sqlite3 "$db_file" "CREATE TABLE IF NOT EXISTS tunnels (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        interface_name TEXT NOT NULL,
+        created_date TEXT DEFAULT CURRENT_TIMESTAMP,
+        remote_ipv4 TEXT NOT NULL,
+        local_ipv4 TEXT NOT NULL,
+        local_ipv6 TEXT NOT NULL,
+        script_file TEXT NOT NULL,
+        service_file TEXT NOT NULL,
+        tunnel_type TEXT NOT NULL
+    );
+    "
+
+    sqlite3 "$db_file" "CREATE TABLE IF NOT EXISTS gost_tunnels (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        protocol TEXT NOT NULL,
+        local_ipv6 TEXT NOT NULL,
+        port_range TEXT NOT NULL,
+        service_name TEXT NOT NULL,
+        service_file TEXT NOT NULL,
+        tunnel_type TEXT NOT NULL,
+        created_date TEXT DEFAULT CURRENT_TIMESTAMP
+    );"
+
+    sqlite3 "$db_file" "CREATE TABLE IF NOT EXISTS ip_state (
+        server_type TEXT PRIMARY KEY,
+        last_assigned_index INTEGER
+    );"
+}
+# Ensure SQLite database is created and table is initialized
+create_table
+
 # Function to print header
 print_header() {
     clear
@@ -318,30 +358,6 @@ install_dependencies() {
 check_root
 check_os
 install_dependencies
-
-# Determine script directory
-script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-
-# SQLite database file
-db_file="$script_dir/tunnels.db"
-
-# Function to create SQLite table for tunnels
-create_table() {
-    sqlite3 "$db_file" "CREATE TABLE IF NOT EXISTS tunnels (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        interface_name TEXT NOT NULL,
-        created_date TEXT DEFAULT CURRENT_TIMESTAMP,
-        remote_ipv4 TEXT NOT NULL,
-        local_ipv4 TEXT NOT NULL,
-        local_ipv6 TEXT NOT NULL,
-        script_file TEXT NOT NULL,
-        service_file TEXT NOT NULL,
-        tunnel_type TEXT NOT NULL
-    );"
-}
-
-# Ensure SQLite database is created and table is initialized
-create_table
 
 # Function to create an IR tunnel
 create_ir_tunnel() {
@@ -666,25 +682,12 @@ update_script_file() {
     echo -e "${GREEN}Script file updated successfully.${NC}"
 }
 
-initialize_database() {
-    local db_path="ip_state.db"  # Adjust the path as needed
-
-    # Ensure the SQLite database and table are ready
-    sqlite3 $db_path <<EOF
-CREATE TABLE IF NOT EXISTS ip_state (
-    server_type TEXT PRIMARY KEY,
-    last_assigned_index INTEGER
-);
-EOF
-}
-initialize_database
 # Function to generate a unique local IPv6 address within a specific range for 'IR' or 'KHAREJ'
 generate_ipv6() {
     local server_type=$1
     local base="23e7:dc8:9a6::"
     local start=1
     local end=1
-    local db_path="ip_state.db"  # Adjust the path as needed
 
     if [ "$server_type" == "IR" ]; then
         start=1
@@ -699,7 +702,7 @@ generate_ipv6() {
 
     # Initialize or update the SQLite database for tracking the last IP index
     # shellcheck disable=SC2155
-    local last_index=$(sqlite3 $db_path "SELECT last_assigned_index FROM ip_state WHERE server_type = '$server_type';")
+    local last_index=$(sqlite3 "$db_file" "SELECT last_assigned_index FROM ip_state WHERE server_type = '$server_type';")
 
     if [ -z "$last_index" ] || [ "$last_index" -lt "$start" ] || [ "$last_index" -ge "$end" ]; then
         last_index=$start
@@ -716,7 +719,7 @@ generate_ipv6() {
     echo "$local_ipv6"
 
     # Update the database with the new last assigned index
-    sqlite3 $db_path "INSERT OR REPLACE INTO ip_state (server_type, last_assigned_index) VALUES ('$server_type', '$last_index');"
+    sqlite3 "$db_file" "INSERT OR REPLACE INTO ip_state (server_type, last_assigned_index) VALUES ('$server_type', '$last_index');"
 
     return 0
 }
@@ -753,10 +756,467 @@ increase_user_limits() {
     fi
 }
 
+validate_ipv6() {
+    local ipv6=$1
+    local pattern1='^(([0-9a-fA-F]{1,4}:){7}([0-9a-fA-F]{1,4}|:))$'
+    local pattern2='^(([0-9a-fA-F]{1,4}:){1,7}:)$'
+    local pattern3='^::([0-9a-fA-F]{1,4}:){0,6}([0-9a-fA-F]{1,4})?$'
+    local pattern4='^([0-9a-fA-F]{1,4}:){1,6}:(:|([0-9a-fA-F]{1,4})(:[0-9a-fA-F]{1,4}){0,5})$'
+    local pattern5='^([0-9a-fA-F]{1,4}:){1,5}((:[0-9a-fA-F]{1,4}){1,2}:|:([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4})?)$'
+    local pattern6='^([0-9a-fA-F]{1,4}:){1,4}((:[0-9a-fA-F]{1,4}){1,3}:|:([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4})?)$'
+    local pattern7='^([0-9a-fA-F]{1,4}:){1,3}((:[0-9a-fA-F]{1,4}){1,4}:|:([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4})?)$'
+    local pattern8='^([0-9a-fA-F]{1,4}:){1,2}((:[0-9a-fA-F]{1,4}){1,5}:|:([0-9a-fA-F]{1,4}:)(:[0-9a-fA-F]{1,4})?)$'
+    local pattern9='^([0-9a-fA-F]{1,4}:)((:[0-9a-fA-F]{1,4}){1,6}:|:([0-9a-fA-F]{1,4}))$'
+    local pattern10='^::(([0-9a-fA-F]{1,4}:){0,7}([0-9a-fA-F]{1,4})?)$'
+    local pattern11='^([0-9a-fA-F]{1,4}:){1,4}:(:|([0-9a-fA-F]{1,4})(:[0-9a-fA-F]{1,4}){0,5})([0-9a-fA-F]{1,4})$'
+
+    if [[ $ipv6 =~ $pattern1 ]] || [[ $ipv6 =~ $pattern2 ]] || [[ $ipv6 =~ $pattern3 ]] || \
+       [[ $ipv6 =~ $pattern4 ]] || [[ $ipv6 =~ $pattern5 ]] || [[ $ipv6 =~ $pattern6 ]] || \
+       [[ $ipv6 =~ $pattern7 ]] || [[ $ipv6 =~ $pattern8 ]] || [[ $ipv6 =~ $pattern9 ]] || \
+       [[ $ipv6 =~ $pattern10 ]] || [[ $ipv6 =~ $pattern11 ]]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+get_all_release_info() {
+  curl --silent "https://api.github.com/repos/go-gost/gost/releases"
+}
+
+select_tunnel_type() {
+    echo -e "${BLUE}Select the tunnel type:${NC}"
+    echo -e "1) TCP"
+    echo -e "2) WebSocket (WS)"
+    echo -e "3) gRPC"
+    echo -n "Enter your choice: "
+    read tunnel_type_selection
+    case $tunnel_type_selection in
+        1) tunnel_type="tcp";;
+        2) tunnel_type="ws";;
+        3) tunnel_type="grpc";;
+        *) echo -e "${RED}Invalid selection${NC}"; return 1;;
+    esac
+}
+
+create_gost_tunnel_single_port() {
+    echo "Enter the local IPv6 address for KHAREJ:"
+    # shellcheck disable=SC2162
+    read local_ipv6
+    local_ipv6=${local_ipv6// /}  # Remove all spaces from input
+
+    echo "Enter Gost Port (comma-separated for multiple ports, e.g., 8080 or 8080,8081,8082):"
+    # shellcheck disable=SC2162
+    read ports
+    ports=${ports// /}  # Remove all spaces from input
+
+    # Validate the IPv6 address
+    if ! validate_ipv6 "$local_ipv6"; then
+        echo "Invalid IPv6 address."
+        return 1
+    fi
+
+    # Validate and process the ports
+    IFS=',' read -ra PORT_ARRAY <<< "$ports"
+    for port in "${PORT_ARRAY[@]}"; do
+        if ! [[ "$port" =~ ^[0-9]+$ ]] || [ "$port" -lt 1 ] || [ "$port" -gt 65535 ]; then
+            echo "Invalid port: $port"
+            return 1
+        fi
+    done
+
+    # Allow ports through ufw
+    for port in "${PORT_ARRAY[@]}"; do
+        sudo ufw allow $port
+    done
+
+    # Ensure ports are free
+    ensure_ports_free "$ports"
+
+    # Ask for tunnel type (tcp, ws, grpc)
+    echo "Select tunnel type (1 for tcp, 2 for ws, 3 for grpc):"
+    # shellcheck disable=SC2162
+    # Select tunnel type
+    if ! select_tunnel_type; then
+        return 1
+    fi
+
+    echo "Setting up Gost tunnel on ports ${ports} with $tunnel_type..."
+    gost_cmd=""
+    for port in "${PORT_ARRAY[@]}"; do
+        if [ -z "$gost_cmd" ]; then
+            gost_cmd="-L=$tunnel_type://:$port/[$local_ipv6]:$port"
+        else
+            gost_cmd="$gost_cmd -- -L=$tunnel_type://:$port/[$local_ipv6]:$port"
+        fi
+    done
+
+    # Create a unique service name
+    service_name="gost_single_$(openssl rand -hex 4)"
+    service_file="/etc/systemd/system/$service_name.service"
+
+    # Create a systemd service for the Gost tunnel
+    create_gost_service "$service_name" "$service_file" "$gost_cmd"
+
+    # Store tunnel details in the database
+    sqlite3 "$db_file" "INSERT INTO gost_tunnels (protocol, local_ipv6, port_range, service_name, service_file, tunnel_type)
+                        VALUES ('$tunnel_type', '$local_ipv6', '$ports', '$service_name', '$service_file', 'single');"
+
+    echo "Gost tunnel service $service_name created and started successfully."
+}
+
+create_gost_tunnel_multi_range() {
+    echo "Enter the local IPv6 address for KHAREJ:"
+    read local_ipv6
+    local_ipv6=${local_ipv6// /}  # Remove all spaces from input
+
+    echo "Enter the starting port number for the Gost tunnel:"
+    read start_port
+
+    echo "Enter the ending port number for the Gost tunnel:"
+    read end_port
+
+    # Validate the IPv6 address
+    if ! validate_ipv6 "$local_ipv6"; then
+        echo "Invalid IPv6 address."
+        return 1
+    fi
+
+    # Validate the port range
+    if ! [[ "$start_port" =~ ^[0-9]+$ ]] || ! [[ "$end_port" =~ ^[0-9]+$ ]] || [ "$start_port" -lt 1 ] || [ "$end_port" -gt 65535 ] || [ "$start_port" -gt "$end_port" ]; then
+        echo "Invalid port range."
+        return 1
+    fi
+
+    # Allow ports through ufw
+    for port in $(seq $start_port $end_port); do
+        sudo ufw allow $port
+    done
+
+    # Ensure ports are free
+    ensure_ports_free "$ports"
+
+    # Select tunnel type
+    if ! select_tunnel_type; then
+        return 1
+    fi
+
+    echo "Setting up Gost tunnel from port $start_port to $end_port with $tunnel_type..."
+    gost_cmd=""
+
+    for port in $(seq $start_port $end_port); do
+        if [ -z "$gost_cmd" ]; then
+            gost_cmd="-L=$tunnel_type://:$port/[$local_ipv6]:$port"
+        else
+            gost_cmd="$gost_cmd -- -L=$tunnel_type://:$port/[$local_ipv6]:$port"
+        fi
+    done
+
+    # Create a unique service name
+    service_name="gost_multi_${start_port}_${end_port}_$(openssl rand -hex 4)"
+    service_file="/etc/systemd/system/$service_name.service"
+
+        # Stop any existing services that might be using the same ports
+        sudo systemctl stop "$service_name" 2>/dev/null || true
+        # shellcheck disable=SC2086
+        sudo systemctl disable $service_name 2>/dev/null || true
+
+    # Create a systemd service for the Gost tunnel
+    create_gost_service "$service_name" "$service_file" "$gost_cmd"
+
+    # Store tunnel details in the database
+    sqlite3 "$db_file" "INSERT INTO gost_tunnels (protocol, local_ipv6, port_range, service_name, service_file, tunnel_type)
+                        VALUES ('$tunnel_type', '$local_ipv6', '$start_port-$end_port', '$service_name', '$service_file', 'multi');"
+
+    echo "Gost tunnel service $service_name created and started successfully."
+}
+
+show_all_gost_tunnels() {
+    echo -e "${BLUE}Listing all Gost tunnels:${NC}"
+    tunnels=$(sqlite3 "$db_file" "SELECT id, protocol, local_ipv6, port_range, service_name, created_date FROM gost_tunnels;")
+
+    echo -e "ID\tProtocol\tLocal IPv6\tPort Range\tService Name\tCreated Date\tService Status"
+    echo -e "----------------------------------------------------------------------------------------------------------------------"
+
+    while IFS='|' read -r id protocol local_ipv6 port_range service_name created_date; do
+        service_status=$(systemctl is-active "$service_name" 2>/dev/null)
+        echo -e "$id\t$protocol\t$local_ipv6\t$port_range\t$service_name\t$created_date\t$service_status"
+    done <<< "$tunnels"
+}
+
+ensure_ports_free() {
+    local port_range=$1
+    local start_port
+    local end_port
+
+    if [[ "$port_range" == *-* ]]; then
+        start_port=$(echo $port_range | cut -d'-' -f1)
+        end_port=$(echo $port_range | cut -d'-' -f2)
+
+        for port in $(seq $start_port $end_port); do
+            fuser -k ${port}/tcp 2>/dev/null || true
+        done
+    else
+        IFS=',' read -ra PORT_ARRAY <<< "$port_range"
+        for port in "${PORT_ARRAY[@]}"; do
+            fuser -k ${port}/tcp 2>/dev/null || true
+        done
+    fi
+}
+
+delete_gost_tunnel() {
+    echo "Enter the ID of the Gost tunnel to delete:"
+    read tunnel_id
+
+    # Validate the input to ensure it's a valid number
+    if ! [[ "$tunnel_id" =~ ^[0-9]+$ ]]; then
+        echo "Invalid ID. Please enter a valid numeric ID."
+        return 1
+    fi
+
+    # Fetch current details from the database
+    tunnel_info=$(sqlite3 -separator " " "$db_file" "SELECT service_name, service_file FROM gost_tunnels WHERE id=$tunnel_id;")
+    if [[ -z $tunnel_info ]]; then
+        echo "No tunnel found with the provided ID."
+        return 1
+    fi
+
+    service_name=$(echo "$tunnel_info" | awk '{print $1}')
+    service_file=$(echo "$tunnel_info" | awk '{print $2}')
+
+    # Stop and disable the systemd service using the service name
+    sudo systemctl stop "$service_name"
+    sudo systemctl disable "$service_name"
+
+    # Remove the service file using the service file path
+    if [ -f "$service_file" ]; then
+        sudo rm "$service_file"
+    else
+        echo "Service file $service_file does not exist."
+    fi
+
+    # Remove the tunnel from the database
+    sqlite3 "$db_file" "DELETE FROM gost_tunnels WHERE id=$tunnel_id;"
+
+    echo "Gost tunnel service $service_name deleted successfully."
+}
+
+
+create_gost_service() {
+    local service_name=$1
+    local service_file=$2
+    local gost_cmd=$3
+    cat <<EOF | sudo tee $service_file
+[Unit]
+Description=Gost Tunnel Service for $service_name
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/gost $gost_cmd
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+    sudo systemctl daemon-reload
+    sudo systemctl enable $service_name
+    sudo systemctl start $service_name
+    echo "Gost tunnel service $service_name started successfully."
+}
+
+install_gost() {
+    # Get all release info
+    release_info=$(get_all_release_info)
+
+    # Print release info for debugging
+    echo "Release Info:"
+    # Extract the latest version tag and download URL for the Linux AMD64 tar.gz file
+    LATEST_VERSION=$(echo "$release_info" | jq -r '.[0].tag_name')
+    DOWNLOAD_URL=$(echo "$release_info" | jq -r '.[0].assets[] | select(.name | contains("linux_amd64.tar.gz")).browser_download_url')
+
+    # Print extracted information for debugging
+    echo "Latest Version: $LATEST_VERSION"
+    echo "Download URL: $DOWNLOAD_URL"
+
+    # Check if the download URL is found
+    if [ -z "$DOWNLOAD_URL" ]; then
+      echo "Error: Could not find the download URL. Please check the release info."
+      exit 1
+    fi
+
+    # Set installation variables
+    INSTALL_DIR="/usr/local/bin"
+    INSTALL_PATH="$INSTALL_DIR/gost"
+
+    # Download the latest release
+    echo "Downloading gost $LATEST_VERSION..."
+    curl -L -o gost.tar.gz "$DOWNLOAD_URL"
+
+    # Check if the download was successful
+    if [[ $? -ne 0 ]]; then
+      echo "Error downloading gost. Please check the URL and try again."
+      exit 1
+    fi
+
+    # Extract the downloaded tar.gz file
+    echo "Extracting gost.tar.gz..."
+    sudo tar -xzf gost.tar.gz
+
+    # Check if the extraction was successful
+    if [[ $? -ne 0 ]]; then
+      echo "Error extracting gost.tar.gz. Please check the file format."
+      exit 1
+    fi
+
+    # Find the extracted gost binary
+    GOST_BINARY_PATH=$(find . -type f -name gost | head -1)
+
+    # Make the gost binary executable
+    sudo chmod +x "$GOST_BINARY_PATH"
+
+    # Move the gost binary to the installation directory
+    echo "Installing gost to $INSTALL_PATH..."
+    sudo mv "$GOST_BINARY_PATH" "$INSTALL_PATH"
+
+    # Verify the installation
+    echo "Verifying the installation..."
+    if [[ $? -eq 0 ]]; then
+      echo "gost $LATEST_VERSION has been installed successfully."
+    else
+      echo "Error installing gost. Please check the installation steps."
+      exit 1
+    fi
+}
+
 print_divider() {
     echo -e "${CYAN}-------------------------------------------------${NC}"
 }
 
+edit_gost_tunnel() {
+    echo "Enter the ID of the Gost tunnel to edit:"
+    read tunnel_id
+
+    # Validate the input to ensure it's a valid number
+    if ! [[ "$tunnel_id" =~ ^[0-9]+$ ]]; then
+        echo "Invalid ID. Please enter a valid numeric ID."
+        return 1
+    fi
+
+    # Fetch current details from the database
+    tunnel_info=$(sqlite3 -separator " " "$db_file" "SELECT protocol, local_ipv6, port_range, service_name, service_file, tunnel_type FROM gost_tunnels WHERE id=$tunnel_id;")
+    if [[ -z $tunnel_info ]]; then
+        echo "No tunnel found with the provided ID."
+        return 1
+    fi
+
+    protocol=$(echo "$tunnel_info" | awk '{print $1}')
+    local_ipv6=$(echo "$tunnel_info" | awk '{print $2}')
+    port_range=$(echo "$tunnel_info" | awk '{print $3}')
+    service_name=$(echo "$tunnel_info" | awk '{print $4}')
+    service_file=$(echo "$tunnel_info" | awk '{print $5}')
+    tunnel_type=$(echo "$tunnel_info" | awk '{print $6}')
+
+    echo "Current Protocol: $protocol"
+    echo "Current Local IPv6: $local_ipv6"
+    echo "Current Port Range: $port_range"
+    echo "Current Tunnel Type: $tunnel_type"
+
+    echo "Enter new Local IPv6 address:"
+    read new_local_ipv6
+    new_local_ipv6=${new_local_ipv6// /}  # Remove all spaces from input
+
+    if [ "$tunnel_type" == "single" ]; then
+        echo "Enter new Port (comma-separated for multiple ports, e.g., 8080 or 8080,8081,8082):"
+    else
+        echo "Enter new Port Range (e.g., 8080-8085):"
+    fi
+    read new_port_range
+    new_port_range=${new_port_range// /}  # Remove all spaces from input
+
+    # Validate the new IPv6 address
+    if ! validate_ipv6 "$new_local_ipv6"; then
+        echo "Invalid IPv6 address."
+        return 1
+    fi
+
+    # Stop, disable, and delete the old service
+    sudo systemctl stop "$service_name"
+    sudo systemctl disable "$service_name"
+    sudo rm "$service_file"
+
+    if [ "$tunnel_type" == "multi" ]; then
+        # Multi-range port
+        start_port=$(echo $new_port_range | cut -d'-' -f1)
+        end_port=$(echo $new_port_range | cut -d'-' -f2)
+
+        # Validate the port range
+        if ! [[ "$start_port" =~ ^[0-9]+$ ]] || ! [[ "$end_port" =~ ^[0-9]+$ ]] || [ "$start_port" -lt 1 ] || [ "$end_port" -gt 65535 ] || [ "$start_port" -gt "$end_port" ]; then
+            echo "Invalid port range."
+            return 1
+        fi
+
+        # Allow new ports through ufw
+        for port in $(seq $start_port $end_port); do
+            sudo ufw allow $port
+        done
+
+        # Ensure ports are free
+        ensure_ports_free "$start_port-$end_port"
+
+        # Generate new service details for multi-range
+        gost_cmd=""
+        for port in $(seq $start_port $end_port); do
+            if [ -z "$gost_cmd" ]; then
+                gost_cmd="-L=$protocol://:$port/[$new_local_ipv6]:$port"
+            else
+                gost_cmd="$gost_cmd -- -L=$protocol://:$port/[$new_local_ipv6]:$port"
+            fi
+        done
+
+        new_service_name="gost_${protocol}_${start_port}_${end_port}_$(openssl rand -hex 4)"
+        new_service_file="/etc/systemd/system/$new_service_name.service"
+    else
+        # Single port or comma-separated ports
+        IFS=',' read -ra PORT_ARRAY <<< "$new_port_range"
+        for port in "${PORT_ARRAY[@]}"; do
+            if ! [[ "$port" =~ ^[0-9]+$ ]] || [ "$port" -lt 1 ] || [ "$port" -gt 65535 ]; then
+                echo "Invalid port: $port"
+                return 1
+            fi
+        done
+
+        # Allow new ports through ufw
+        for port in "${PORT_ARRAY[@]}"; do
+            sudo ufw allow $port
+        done
+
+        # Ensure ports are free
+        ensure_ports_free "$new_port_range"
+
+        # Generate new service details for single/comma-separated ports
+        gost_cmd=""
+        for port in "${PORT_ARRAY[@]}"; do
+            if [ -z "$gost_cmd" ]; then
+                gost_cmd="-L=$protocol://:$port/[$new_local_ipv6]:$port"
+            else
+                gost_cmd="$gost_cmd -- -L=$protocol://:$port/[$new_local_ipv6]:$port"
+            fi
+        done
+
+        new_service_name="gost_${protocol}_${new_port_range}_$(openssl rand -hex 4)"
+        new_service_file="/etc/systemd/system/$new_service_name.service"
+    fi
+
+    # Create a new systemd service for the Gost tunnel
+    create_gost_service "$new_service_name" "$new_service_file" "$gost_cmd"
+
+    # Update the database with the new service details
+    sqlite3 "$db_file" "UPDATE gost_tunnels SET local_ipv6='$new_local_ipv6', port_range='$new_port_range', service_name='$new_service_name', service_file='$new_service_file' WHERE id=$tunnel_id;"
+
+    echo "Gost tunnel updated successfully."
+}
 
 # Main menu function
 show_menu() {
@@ -772,13 +1232,18 @@ show_menu() {
     echo -e "${YELLOW}5. Delete Tunnel${NC}"
     echo -e "${YELLOW}6. Optimize Network${NC}"
     echo -e "${YELLOW}7. Increase User Limit${NC}"
-    echo -e "${MAGENTA}8. Exit${NC}"
+    echo -e "${YELLOW}8. Install Gost v3${NC}"
+    echo -e "${YELLOW}9. Create Gost tunnel ipv6(single port)${NC}"
+    echo -e "${YELLOW}10. Create Gost tunnel ipv6(multi port)${NC}"
+    echo -e "${YELLOW}11. Show gost tunnels${NC}"
+    echo -e "${YELLOW}12. Edit gost tunnel${NC}"
+    echo -e "${YELLOW}13. Delete gost tunnel${NC}"
+    echo -e "${MAGENTA}0. Exit${NC}"
     print_divider
     # shellcheck disable=SC2162
     read -p "Enter your choice [1-9]: " choice
     run_choice "$choice"
 }
-
 # Function to handle user choice
 run_choice() {
     case $1 in
@@ -789,7 +1254,13 @@ run_choice() {
         5) delete_tunnel;;
         6) optimize_network;;
         7) increase_user_limits;;
-        8) echo -e "${RED}Exiting...${NC}"
+        8) install_gost;;
+        9) create_gost_tunnel_single_port;;
+        10) create_gost_tunnel_multi_range;;
+        11) show_all_gost_tunnels;;
+        12) edit_gost_tunnel;;
+        13) delete_gost_tunnel;;
+        0) echo -e "${RED}Exiting...${NC}"
            exit 0;;
         *) echo -e "${RED}Invalid choice, please select a valid option.${NC}"
            pause;;

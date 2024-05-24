@@ -8,7 +8,7 @@ This script sets up and manages the Feri Tunnel, a hypothetical tunneling tool d
 
 telegram group https://t.me/feritunnel
 
-![Screenshot from 2024-05-24 21-45-50](https://github.com/iamfarhad/feri-tunnel/assets/1936147/9b887460-1682-4d7b-a942-f1d2d2c90d36)
+![Screenshot from 2024-05-24 21-56-09](https://github.com/iamfarhad/feri-tunnel/assets/1936147/6efd1160-7f55-4166-a63c-8e4fd5c201c4)
 
 
 

@@ -404,8 +404,16 @@ insert_tunnel_info() {
 # Function to display all tunnels from SQLite database
 show_all_tunnels() {
     echo -e "${BLUE}Listing all tunnels:${NC}"
-    sqlite3 -header -column "$db_file" "SELECT id, interface_name, created_date, remote_ipv4, local_ipv4, local_ipv6, script_file, service_file, tunnel_type FROM tunnels;"
+    tunnels=$(sqlite3 "$db_file" "SELECT id, interface_name, created_date, remote_ipv4, local_ipv4, local_ipv6, script_file, service_file, tunnel_type FROM tunnels;")
+
+    printf "%-5s %-15s %-20s %-15s %-15s %-20s %-50s %-50s %-10s\n" "ID" "Interface" "Created Date" "Remote IPv4" "Local IPv4" "Local IPv6" "Script File" "Service File" "Type"
+    echo -e "${MAGENTA}------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------${NC}"
+
+    while IFS='|' read -r id interface_name created_date remote_ipv4 local_ipv4 local_ipv6 script_file service_file tunnel_type; do
+        printf "%-5s %-15s %-20s %-15s %-15s %-20s %-50s %-50s %-10s\n" "$id" "$interface_name" "$created_date" "$remote_ipv4" "$local_ipv4" "$local_ipv6" "$script_file" "$service_file" "$tunnel_type"
+    done <<< "$tunnels"
 }
+
 
 # Function to delete a tunnel
 delete_tunnel() {

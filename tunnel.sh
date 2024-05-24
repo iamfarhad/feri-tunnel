@@ -1097,7 +1097,7 @@ show_menu() {
     echo -e "${YELLOW}5. Delete Tunnel${NC}"
     echo -e "${YELLOW}6. Optimize Network${NC}"
     echo -e "${YELLOW}7. Increase User Limit${NC}"
-    echo -e "${YELLOW}8. Install Gost v3${NC}"
+    echo -e "${YELLOW}8. Install Or Update Gost v3${NC}"
     echo -e "${YELLOW}9. Create Gost tunnel ipv6 (single port)${NC}"
     echo -e "${YELLOW}10. Create Gost tunnel ipv6 (multi-port)${NC}"
     echo -e "${YELLOW}11. Show Gost Tunnels${NC}"

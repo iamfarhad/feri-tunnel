@@ -1034,9 +1034,9 @@ edit_gost_tunnel() {
         gost_cmd=""
         for port in $(seq $start_port $end_port); do
             if [ -z "$gost_cmd" ]; then
-                gost_cmd="-L=$protocol://:$port/[$new_local_ipv6]:$port"
+                gost_cmd="-L=$protocol://:$port/[$new_local_ipv6]:$port?keepAlive=true&ttl=30s&nodelay=true"
             else
-                gost_cmd="$gost_cmd -- -L=$protocol://:$port/[$new_local_ipv6]:$port"
+                gost_cmd="$gost_cmd -- -L=$protocol://:$port/[$new_local_ipv6]:$port?keepAlive=true&ttl=30s&nodelay=true"
             fi
         done
 
@@ -1064,9 +1064,9 @@ edit_gost_tunnel() {
         gost_cmd=""
         for port in "${PORT_ARRAY[@]}"; do
             if [ -z "$gost_cmd" ]; then
-                gost_cmd="-L=$protocol://:$port/[$new_local_ipv6]:$port"
+                gost_cmd="-L=$protocol://:$port/[$new_local_ipv6]:$port?keepAlive=true&ttl=30s&nodelay=true"
             else
-                gost_cmd="$gost_cmd -- -L=$protocol://:$port/[$new_local_ipv6]:$port"
+                gost_cmd="$gost_cmd -- -L=$protocol://:$port/[$new_local_ipv6]:$port?keepAlive=true&ttl=30s&nodelay=true"
             fi
         done
 

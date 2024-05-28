@@ -42,6 +42,37 @@ red_msg() {
     tput sgr0
 }
 
+# Function to update system and install sqlite3
+install_dependencies() {
+    echo -e "${BLUE}Updating package list...${NC}"
+    sudo apt update -y
+
+    echo -e "${BLUE}Upgrading packages...${NC}"
+    sudo apt upgrade -y
+
+    echo -e "${BLUE}Installing sqlite3...${NC}"
+    sudo apt install -y sqlite3
+
+    echo -e "${BLUE}Installing openssl...${NC}"
+    sudo apt install -y openssl
+
+    echo -e "${BLUE}Installing jq...${NC}"
+    sudo apt install -y jq
+
+    echo -e "${BLUE}Installing curl...${NC}"
+    sudo apt install -y curl
+
+    echo -e "${BLUE}Installing ufw...${NC}"
+    sudo apt install -y ufw
+}
+
+check_root
+check_os
+install_dependencies
+fix_etc_hosts
+fix_dns
+set_timezone
+
 # Determine script directory
 script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
@@ -50,7 +81,7 @@ db_file="$script_dir/tunnels.db"
 
 # Function to create SQLite table for tunnels
 create_table() {
-    sqlite3 "$db_file" "CREATE TABLE IF NOT EXISTS tunnels (
+    sudo sqlite3 "$db_file" "CREATE TABLE IF NOT EXISTS tunnels (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         interface_name TEXT NOT NULL,
         created_date TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -61,9 +92,9 @@ create_table() {
         service_file TEXT NOT NULL,
         tunnel_type TEXT NOT NULL
     );
-    "
+    " || { echo "Failed to create tunnels table"; exit 1; }
 
-    sqlite3 "$db_file" "CREATE TABLE IF NOT EXISTS gost_tunnels (
+    sudo sqlite3 "$db_file" "CREATE TABLE IF NOT EXISTS gost_tunnels (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         protocol TEXT NOT NULL,
         local_ipv6 TEXT NOT NULL,
@@ -72,12 +103,12 @@ create_table() {
         service_file TEXT NOT NULL,
         tunnel_type TEXT NOT NULL,
         created_date TEXT DEFAULT CURRENT_TIMESTAMP
-    );"
+    );" || { echo "Failed to create gost_tunnels table"; exit 1; }
 
-    sqlite3 "$db_file" "CREATE TABLE IF NOT EXISTS ip_state (
+    sudo sqlite3 "$db_file" "CREATE TABLE IF NOT EXISTS ip_state (
         server_type TEXT PRIMARY KEY,
         last_assigned_index INTEGER
-    );"
+    );" || { echo "Failed to create ip_state table"; exit 1; }
 }
 # Ensure SQLite database is created and table is initialized
 create_table
@@ -239,21 +270,6 @@ optimize_network() {
     enable_bbr
 }
 
-# Function to update system and install sqlite3
-install_dependencies() {
-    echo -e "${BLUE}Updating package list...${NC}"
-    sudo apt update -y
-
-    echo -e "${BLUE}Upgrading packages...${NC}"
-    sudo apt upgrade -y
-
-    echo -e "${BLUE}Installing sqlite3...${NC}"
-    sudo apt install -y sqlite3
-
-    echo -e "${BLUE}Installing openssl...${NC}"
-    sudo apt install -y openssl
-}
-
 # Fix Hosts file
 fix_etc_hosts(){
   echo
@@ -343,14 +359,6 @@ set_timezone() {
     echo
     sleep 0.5
 }
-
-# Call the check functions
-check_root
-check_os
-install_dependencies
-fix_etc_hosts
-fix_dns
-set_timezone
 
 # Function to create an IR tunnel
 create_ir_tunnel() {
@@ -576,7 +584,7 @@ delete_tunnel_by_id() {
 
     sudo ip tunnel del "$interface_name"
 
-    rm -f "/etc/systemd/system/$service_file"
+    rm -f "/usr/lib/systemd/system/$service_file"
     sqlite3 "$db_file" "DELETE FROM tunnels WHERE id=$id;"
 
     echo -e "${GREEN}Tunnel deleted successfully.${NC}"
@@ -837,7 +845,7 @@ create_gost_tunnel_single_port() {
 
     # Create a unique service name
     service_name="gost_single_$(openssl rand -hex 4)"
-    service_file="/etc/systemd/system/$service_name.service"
+    service_file="/usr/lib/systemd/system/$service_name.service"
 
     # Create a systemd service for the Gost tunnel
     create_gost_service "$service_name" "$service_file" "$gost_cmd"
@@ -898,7 +906,7 @@ create_gost_tunnel_multi_range() {
 
     # Create a unique service name
     service_name="gost_multi_${start_port}_${end_port}_$(openssl rand -hex 4)"
-    service_file="/etc/systemd/system/$service_name.service"
+    service_file="/usr/lib/systemd/system/$service_name.service"
 
     # Stop any existing services that might be using the same ports
     sudo systemctl stop "$service_name" 2>/dev/null || true
@@ -1158,7 +1166,7 @@ edit_gost_tunnel() {
         done
 
         new_service_name="gost_${protocol}_${start_port}_${end_port}_$(openssl rand -hex 4)"
-        new_service_file="/etc/systemd/system/$new_service_name.service"
+        new_service_file="/usr/lib/systemd/system/$new_service_name.service"
     else
         # Single port or comma-separated ports
         IFS=',' read -ra PORT_ARRAY <<< "$new_port_range"
@@ -1188,7 +1196,7 @@ edit_gost_tunnel() {
         done
 
         new_service_name="gost_${protocol}_${new_port_range}_$(openssl rand -hex 4)"
-        new_service_file="/etc/systemd/system/$new_service_name.service"
+        new_service_file="/usr/lib/systemd/system/$new_service_name.service"
     fi
 
     # Create a new systemd service for the Gost tunnel

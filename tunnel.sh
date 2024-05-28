@@ -64,6 +64,125 @@ install_dependencies() {
 
     echo -e "${BLUE}Installing ufw...${NC}"
     sudo apt install -y ufw
+
+    sudo apt -y install apt-transport-https locales apt-utils bash-completion libssl-dev socat
+
+    sudo apt -y -q autoclean
+    sudo apt -y clean
+    sudo apt -q update
+    sudo apt -y upgrade
+    sudo apt -y full-upgrade
+    sudo apt -y autoremove --purge
+}
+
+# Function to check if the system is Ubuntu or Debian-based
+check_os() {
+    if ! command -v lsb_release &> /dev/null; then
+        echo -e "${RED}This script requires lsb_release to identify the OS. Please install lsb-release.${NC}"
+        exit 1
+    fi
+
+    os=$(lsb_release -is)
+    if [[ "$os" != "Ubuntu" && "$os" != "Debian" ]]; then
+        echo -e "${RED}This script only supports Ubuntu and Debian-based systems.${NC}"
+        exit 1
+    fi
+}
+
+check_root() {
+    if [[ $EUID -ne 0 ]]; then
+        echo -e "${RED}This script must be run as root. Please run it with sudo.${NC}"
+        exit 1
+    fi
+}
+
+fix_etc_hosts(){
+  echo
+  yellow_msg "Fixing Hosts file."
+  sleep 0.5
+
+  cp $HOST_PATH /etc/hosts.bak
+  yellow_msg "Default hosts file saved. Directory: /etc/hosts.bak"
+  sleep 0.5
+
+  if ! grep -q $(hostname) $HOST_PATH; then
+    echo "127.0.1.1 $(hostname)" | sudo tee -a $HOST_PATH > /dev/null
+    green_msg "Hosts Fixed."
+    echo
+    sleep 0.5
+  else
+    green_msg "Hosts OK. No changes made."
+    echo
+    sleep 0.5
+  fi
+}
+
+fix_dns(){
+    echo
+    yellow_msg "Fixing DNS Temporarily."
+    sleep 0.5
+
+    cp $DNS_PATH /etc/resolv.conf.bak
+    yellow_msg "Default resolv.conf file saved. Directory: /etc/resolv.conf.bak"
+    sleep 0.5
+
+    sed -i '/nameserver/d' $DNS_PATH
+
+    echo "nameserver 1.1.1.2" >> $DNS_PATH
+    echo "nameserver 1.0.0.2" >> $DNS_PATH
+
+    green_msg "DNS Fixed Temporarily."
+    echo
+    sleep 0.5
+}
+
+# Set the server TimeZone to the VPS IP address location.
+set_timezone() {
+    echo
+    yellow_msg 'Setting TimeZone based on VPS IP address...'
+    sleep 0.5
+
+    get_location_info() {
+        local ip_sources=("https://ipv4.icanhazip.com" "https://api.ipify.org" "https://ipv4.ident.me/")
+        local location_info
+
+        for source in "${ip_sources[@]}"; do
+            local ip=$(curl -s "$source")
+            if [ -n "$ip" ]; then
+                location_info=$(curl -s "http://ip-api.com/json/$ip")
+                if [ -n "$location_info" ]; then
+                    echo "$location_info"
+                    return 0
+                fi
+            fi
+        done
+
+        red_msg "Error: Failed to fetch location information from known sources. Setting timezone to UTC."
+        sudo timedatectl set-timezone "UTC"
+        return 1
+    }
+
+    # Fetch location information from three sources
+    location_info_1=$(get_location_info)
+    location_info_2=$(get_location_info)
+    location_info_3=$(get_location_info)
+
+    # Extract timezones from the location information
+    timezones=($(echo "$location_info_1 $location_info_2 $location_info_3" | jq -r '.timezone'))
+
+    # Check if at least two timezones are equal
+    if [[ "${timezones[0]}" == "${timezones[1]}" || "${timezones[0]}" == "${timezones[2]}" || "${timezones[1]}" == "${timezones[2]}" ]]; then
+        # Set the timezone based on the first matching pair
+        timezone="${timezones[0]}"
+        sudo timedatectl set-timezone "$timezone"
+        green_msg "Timezone set to $timezone"
+    else
+        red_msg "Error: Failed to fetch consistent location information from known sources. Setting timezone to UTC."
+        sudo timedatectl set-timezone "UTC"
+    fi
+
+    echo
+    sleep 0.5
 }
 
 check_root
@@ -144,27 +263,6 @@ handle_exit() {
 
 # Trap Ctrl+C (SIGINT)
 trap handle_exit SIGINT
-
-check_root() {
-    if [[ $EUID -ne 0 ]]; then
-        echo -e "${RED}This script must be run as root. Please run it with sudo.${NC}"
-        exit 1
-    fi
-}
-
-# Function to check if the system is Ubuntu or Debian-based
-check_os() {
-    if ! command -v lsb_release &> /dev/null; then
-        echo -e "${RED}This script requires lsb_release to identify the OS. Please install lsb-release.${NC}"
-        exit 1
-    fi
-
-    os=$(lsb_release -is)
-    if [[ "$os" != "Ubuntu" && "$os" != "Debian" ]]; then
-        echo -e "${RED}This script only supports Ubuntu and Debian-based systems.${NC}"
-        exit 1
-    fi
-}
 
 optimize_tcp() {
     echo -e "${BLUE}Optimizing TCP settings for better performance...${NC}"
@@ -268,96 +366,6 @@ enable_bbr() {
 optimize_network() {
     optimize_tcp
     enable_bbr
-}
-
-# Fix Hosts file
-fix_etc_hosts(){
-  echo
-  yellow_msg "Fixing Hosts file."
-  sleep 0.5
-
-  cp $HOST_PATH /etc/hosts.bak
-  yellow_msg "Default hosts file saved. Directory: /etc/hosts.bak"
-  sleep 0.5
-
-  if ! grep -q $(hostname) $HOST_PATH; then
-    echo "127.0.1.1 $(hostname)" | sudo tee -a $HOST_PATH > /dev/null
-    green_msg "Hosts Fixed."
-    echo
-    sleep 0.5
-  else
-    green_msg "Hosts OK. No changes made."
-    echo
-    sleep 0.5
-  fi
-}
-
-fix_dns(){
-    echo
-    yellow_msg "Fixing DNS Temporarily."
-    sleep 0.5
-
-    cp $DNS_PATH /etc/resolv.conf.bak
-    yellow_msg "Default resolv.conf file saved. Directory: /etc/resolv.conf.bak"
-    sleep 0.5
-
-    sed -i '/nameserver/d' $DNS_PATH
-
-    echo "nameserver 1.1.1.2" >> $DNS_PATH
-    echo "nameserver 1.0.0.2" >> $DNS_PATH
-
-    green_msg "DNS Fixed Temporarily."
-    echo
-    sleep 0.5
-}
-
-# Set the server TimeZone to the VPS IP address location.
-set_timezone() {
-    echo
-    yellow_msg 'Setting TimeZone based on VPS IP address...'
-    sleep 0.5
-
-    get_location_info() {
-        local ip_sources=("https://ipv4.icanhazip.com" "https://api.ipify.org" "https://ipv4.ident.me/")
-        local location_info
-
-        for source in "${ip_sources[@]}"; do
-            local ip=$(curl -s "$source")
-            if [ -n "$ip" ]; then
-                location_info=$(curl -s "http://ip-api.com/json/$ip")
-                if [ -n "$location_info" ]; then
-                    echo "$location_info"
-                    return 0
-                fi
-            fi
-        done
-
-        red_msg "Error: Failed to fetch location information from known sources. Setting timezone to UTC."
-        sudo timedatectl set-timezone "UTC"
-        return 1
-    }
-
-    # Fetch location information from three sources
-    location_info_1=$(get_location_info)
-    location_info_2=$(get_location_info)
-    location_info_3=$(get_location_info)
-
-    # Extract timezones from the location information
-    timezones=($(echo "$location_info_1 $location_info_2 $location_info_3" | jq -r '.timezone'))
-
-    # Check if at least two timezones are equal
-    if [[ "${timezones[0]}" == "${timezones[1]}" || "${timezones[0]}" == "${timezones[2]}" || "${timezones[1]}" == "${timezones[2]}" ]]; then
-        # Set the timezone based on the first matching pair
-        timezone="${timezones[0]}"
-        sudo timedatectl set-timezone "$timezone"
-        green_msg "Timezone set to $timezone"
-    else
-        red_msg "Error: Failed to fetch consistent location information from known sources. Setting timezone to UTC."
-        sudo timedatectl set-timezone "UTC"
-    fi
-
-    echo
-    sleep 0.5
 }
 
 # Function to create an IR tunnel

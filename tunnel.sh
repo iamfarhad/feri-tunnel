@@ -191,7 +191,6 @@ check_os
 install_dependencies
 fix_etc_hosts
 fix_dns
-set_timezone
 
 # Determine script directory
 script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
@@ -700,57 +699,35 @@ generate_ipv6() {
 
     if [ "$server_type" == "IR" ]; then
         start=1
-        end=99
-        # Fetch the last assigned index for IR servers
-        local last_index=$(sqlite3 "$db_file" "SELECT last_assigned_index FROM ip_state WHERE server_type = 'IR';")
-
-        if [ -z "$last_index" ] || [ "$last_index" -lt "$start" ] || [ "$last_index" -ge "$end" ]; then
-            last_index=$start
-        else
-            last_index=$((last_index + 1))
-        fi
-
-        if [ "$last_index" -gt "$end" ]; then
-            echo "Error: No available IPv6 addresses in the range from $start to $end." >&2
-            return 1
-        fi
-
-        local local_ipv6="${base}${last_index}/64"
-
-        # Update the database with the new last assigned index
-        sqlite3 "$db_file" "INSERT OR REPLACE INTO ip_state (server_type, last_assigned_index) VALUES ('IR', '$last_index');"
-
-        echo "$local_ipv6"
-        return 0
-
+        end=299
     elif [ "$server_type" == "KHAREJ" ]; then
-        start=100
-        end=200
-
-        while [ $attempt -lt $max_attempts ]; do
-            # Generate a random suffix within the range
-            local suffix=$((start + RANDOM % (end - start + 1)))
-            local local_ipv6="${base}${suffix}/64"
-
-            # Check if the generated IPv6 address already exists in the ip_state table
-            local existing_ipv6=$(sqlite3 "$db_file" "SELECT local_ipv6 FROM ip_state WHERE local_ipv6='$local_ipv6';")
-
-            if [ -z "$existing_ipv6" ]; then
-                # Insert the new IPv6 address into the ip_state table
-                sqlite3 "$db_file" "INSERT INTO ip_state (server_type, local_ipv6) VALUES ('$server_type', '$local_ipv6');"
-                echo "$local_ipv6"
-                return 0
-            fi
-
-            attempt=$((attempt + 1))
-        done
-
-        echo "Error: Failed to generate a unique IPv6 address after $max_attempts attempts." >&2
-        return 1
+        start=300
+        end=600
     else
         echo "Error: Invalid server type specified." >&2
         return 1
     fi
+
+    while [ $attempt -lt $max_attempts ]; do
+        # Generate a random suffix within the range
+        local suffix=$((start + RANDOM % (end - start + 1)))
+        local local_ipv6="${base}${suffix}/64"
+
+        # Check if the generated IPv6 address already exists in the ip_state table
+        local existing_ipv6=$(sqlite3 "$db_file" "SELECT local_ipv6 FROM ip_state WHERE local_ipv6='$local_ipv6';")
+
+        if [ -z "$existing_ipv6" ]; then
+            # Insert the new IPv6 address into the ip_state table
+            sqlite3 "$db_file" "INSERT INTO ip_state (server_type, local_ipv6) VALUES ('$server_type', '$local_ipv6');"
+            echo "$local_ipv6"
+            return 0
+        fi
+
+        attempt=$((attempt + 1))
+    done
+
+    echo "Error: Failed to generate a unique IPv6 address after $max_attempts attempts." >&2
+    return 1
 }
 
 
@@ -1261,6 +1238,7 @@ show_menu() {
     echo -e "${YELLOW}11. Show Gost Tunnels${NC}"
     echo -e "${YELLOW}12. Edit Gost Tunnel${NC}"
     echo -e "${YELLOW}13. Delete Gost Tunnel${NC}"
+    echo -e "${YELLOW}14. Fix TimeZone${NC}"
     echo -e "${MAGENTA}0. Exit${NC}"
     print_divider
     read -p "Enter your choice [0-13]: " choice
@@ -1283,6 +1261,7 @@ run_choice() {
         11) show_all_gost_tunnels;;
         12) edit_gost_tunnel;;
         13) delete_gost_tunnel;;
+        14) set_timezone;;
         0) echo -e "${RED}Exiting...${NC}"
            exit 0;;
         *) echo -e "${RED}Invalid choice, please select a valid option.${NC}"

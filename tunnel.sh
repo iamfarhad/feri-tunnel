@@ -105,6 +105,7 @@ fix_etc_hosts(){
   yellow_msg "Default hosts file saved. Directory: /etc/hosts.bak"
   sleep 0.5
 
+  # shellcheck disable=SC2046
   if ! grep -q $(hostname) $HOST_PATH; then
     echo "127.0.1.1 $(hostname)" | sudo tee -a $HOST_PATH > /dev/null
     green_msg "Hosts Fixed."
@@ -694,40 +695,64 @@ generate_ipv6() {
     local base="23e7:dc8:9a6::"
     local start=1
     local end=1
+    local max_attempts=1000
+    local attempt=0
 
     if [ "$server_type" == "IR" ]; then
         start=1
         end=99
+        # Fetch the last assigned index for IR servers
+        local last_index=$(sqlite3 "$db_file" "SELECT last_assigned_index FROM ip_state WHERE server_type = 'IR';")
+
+        if [ -z "$last_index" ] || [ "$last_index" -lt "$start" ] || [ "$last_index" -ge "$end" ]; then
+            last_index=$start
+        else
+            last_index=$((last_index + 1))
+        fi
+
+        if [ "$last_index" -gt "$end" ]; then
+            echo "Error: No available IPv6 addresses in the range from $start to $end." >&2
+            return 1
+        fi
+
+        local local_ipv6="${base}${last_index}/64"
+
+        # Update the database with the new last assigned index
+        sqlite3 "$db_file" "INSERT OR REPLACE INTO ip_state (server_type, last_assigned_index) VALUES ('IR', '$last_index');"
+
+        echo "$local_ipv6"
+        return 0
+
     elif [ "$server_type" == "KHAREJ" ]; then
         start=100
         end=200
+
+        while [ $attempt -lt $max_attempts ]; do
+            # Generate a random suffix within the range
+            local suffix=$((start + RANDOM % (end - start + 1)))
+            local local_ipv6="${base}${suffix}/64"
+
+            # Check if the generated IPv6 address already exists in the ip_state table
+            local existing_ipv6=$(sqlite3 "$db_file" "SELECT local_ipv6 FROM ip_state WHERE local_ipv6='$local_ipv6';")
+
+            if [ -z "$existing_ipv6" ]; then
+                # Insert the new IPv6 address into the ip_state table
+                sqlite3 "$db_file" "INSERT INTO ip_state (server_type, local_ipv6) VALUES ('$server_type', '$local_ipv6');"
+                echo "$local_ipv6"
+                return 0
+            fi
+
+            attempt=$((attempt + 1))
+        done
+
+        echo "Error: Failed to generate a unique IPv6 address after $max_attempts attempts." >&2
+        return 1
     else
         echo "Error: Invalid server type specified." >&2
         return 1
     fi
-
-    # Initialize or update the SQLite database for tracking the last IP index
-    local last_index=$(sqlite3 "$db_file" "SELECT last_assigned_index FROM ip_state WHERE server_type = '$server_type';")
-
-    if [ -z "$last_index" ] || [ "$last_index" -lt "$start" ] || [ "$last_index" -ge "$end" ]; then
-        last_index=$start
-    else
-        last_index=$((last_index + 1))
-    fi
-
-    if [ "$last_index" -gt "$end" ]; then
-        echo "Error: No available IPv6 addresses in the range from $start to $end." >&2
-        return 1
-    fi
-
-    local local_ipv6="${base}${last_index}/64"
-    echo "$local_ipv6"
-
-    # Update the database with the new last assigned index
-    sqlite3 "$db_file" "INSERT OR REPLACE INTO ip_state (server_type, last_assigned_index) VALUES ('$server_type', '$last_index');"
-
-    return 0
 }
+
 
 increase_user_limits() {
     echo -e "${BLUE}Increasing user limits...${NC}"

@@ -226,6 +226,7 @@ create_table() {
 
     sudo sqlite3 "$db_file" "CREATE TABLE IF NOT EXISTS ip_state (
         server_type TEXT PRIMARY KEY,
+        local_ipv6 TEXT,
         last_assigned_index INTEGER
     );" || { echo "Failed to create ip_state table"; exit 1; }
 }
